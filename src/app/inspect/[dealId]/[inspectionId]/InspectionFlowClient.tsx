@@ -58,6 +58,7 @@ export default function InspectionFlowClient({
 
   const [followUpAudio, setFollowUpAudio] = useState<Record<string, { blob: Blob; durationSeconds: number }>>({});
   const [followUpPhotos, setFollowUpPhotos] = useState<Record<string, { blob: Blob; url: string }[]>>({});
+  const [isSubmittingFollowUp, setIsSubmittingFollowUp] = useState(false);
   const activeFollowUpKeyRef = useRef<string | null>(null);
   const followupPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const followupRecorder = useVoiceRecorder();
@@ -65,6 +66,7 @@ export default function InspectionFlowClient({
   const recorder = useVoiceRecorder();
   const recordingsRef = useRef<Map<string, { blob: Blob; durationSeconds: number }>>(new Map());
   const [photosByQuestion, setPhotosByQuestion] = useState<Record<string, { blob: Blob; url: string }[]>>({});
+  const [isSubmittingArea, setIsSubmittingArea] = useState(false);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const activeQuestionRef = useRef<string | null>(null);
 
@@ -251,23 +253,28 @@ export default function InspectionFlowClient({
         durationSeconds: recorder.durationSeconds,
       });
     }
-    const { areaRecordingId } = await uploadAreaData();
-    recorder.reset();
-    Object.values(photosByQuestion).flat().forEach((p) => URL.revokeObjectURL(p.url));
-    setPhotosByQuestion({});
+    setIsSubmittingArea(true);
+    try {
+      const { areaRecordingId } = await uploadAreaData();
+      recorder.reset();
+      Object.values(photosByQuestion).flat().forEach((p) => URL.revokeObjectURL(p.url));
+      setPhotosByQuestion({});
 
-    if (areaIndex < currentAreas.length - 1) {
-      setAreaIndex(areaIndex + 1);
-    } else {
-      setFollowUpBlockContext({
-        scope: currentBlock?.type === "shared" ? "shared" : "unit",
-        apartmentId: currentBlock?.type === "unit" ? currentBlock.unitId ?? null : null,
-      });
-      setAnalysis(null);
-      setAnalysisError(null);
-      setFollowUpAudio({});
-      setFollowUpPhotos({});
-      setScreen("followup");
+      if (areaIndex < currentAreas.length - 1) {
+        setAreaIndex(areaIndex + 1);
+      } else {
+        setFollowUpBlockContext({
+          scope: currentBlock?.type === "shared" ? "shared" : "unit",
+          apartmentId: currentBlock?.type === "unit" ? currentBlock.unitId ?? null : null,
+        });
+        setAnalysis(null);
+        setAnalysisError(null);
+        setFollowUpAudio({});
+        setFollowUpPhotos({});
+        setScreen("followup");
+      }
+    } finally {
+      setIsSubmittingArea(false);
     }
   };
 
@@ -318,68 +325,78 @@ export default function InspectionFlowClient({
         durationSeconds: recorder.durationSeconds,
       });
     }
-    await uploadAreaData();
-    recorder.reset();
-    Object.values(photosByQuestion).flat().forEach((p) => URL.revokeObjectURL(p.url));
-    setPhotosByQuestion({});
+    setIsSubmittingArea(true);
+    try {
+      await uploadAreaData();
+      recorder.reset();
+      Object.values(photosByQuestion).flat().forEach((p) => URL.revokeObjectURL(p.url));
+      setPhotosByQuestion({});
 
-    if (areaIndex > 0) {
-      setAreaIndex(areaIndex - 1);
-    } else if (blockIndex > 0) {
-      const prevBlock = blocks[blockIndex - 1];
-      setBlockIndex(blockIndex - 1);
-      setAreaIndex(prevBlock.areas.length - 1);
+      if (areaIndex > 0) {
+        setAreaIndex(areaIndex - 1);
+      } else if (blockIndex > 0) {
+        const prevBlock = blocks[blockIndex - 1];
+        setBlockIndex(blockIndex - 1);
+        setAreaIndex(prevBlock.areas.length - 1);
+      }
+    } finally {
+      setIsSubmittingArea(false);
     }
   };
 
   const handleFollowUpContinue = async () => {
-    if (analysis && !inspectionId.startsWith("demo-")) {
-      const hasAudio = Object.keys(followUpAudio).length > 0;
-      const hasPhotos = Object.values(followUpPhotos).flat().length > 0;
-      if (hasAudio || hasPhotos) {
-        try {
-          for (const area of analysis.areas) {
-            const formData = new FormData();
-            let hasData = false;
-            for (const f of area.followUps) {
-              const key = `${area.areaRecordingId}::${f.question_id}`;
-              const audio = followUpAudio[key];
-              if (audio?.blob) {
-                formData.append(`audio_${f.question_id}`, audio.blob, "recording.webm");
-                formData.append(`duration_${f.question_id}`, String(audio.durationSeconds));
-                hasData = true;
+    setIsSubmittingFollowUp(true);
+    try {
+      if (analysis && !inspectionId.startsWith("demo-")) {
+        const hasAudio = Object.keys(followUpAudio).length > 0;
+        const hasPhotos = Object.values(followUpPhotos).flat().length > 0;
+        if (hasAudio || hasPhotos) {
+          try {
+            for (const area of analysis.areas) {
+              const formData = new FormData();
+              let hasData = false;
+              for (const f of area.followUps) {
+                const key = `${area.areaRecordingId}::${f.question_id}`;
+                const audio = followUpAudio[key];
+                if (audio?.blob) {
+                  formData.append(`audio_${f.question_id}`, audio.blob, "recording.webm");
+                  formData.append(`duration_${f.question_id}`, String(audio.durationSeconds));
+                  hasData = true;
+                }
+                const photos = followUpPhotos[key] ?? [];
+                photos.forEach((p, i) => {
+                  formData.append("photos", p.blob, `photo-${f.question_id}-${i}.jpg`);
+                  formData.append("photo_question_ids", f.question_id);
+                  hasData = true;
+                });
               }
-              const photos = followUpPhotos[key] ?? [];
-              photos.forEach((p, i) => {
-                formData.append("photos", p.blob, `photo-${f.question_id}-${i}.jpg`);
-                formData.append("photo_question_ids", f.question_id);
-                hasData = true;
+              if (!hasData) continue;
+              await fetch(`/api/inspections/${inspectionId}/recordings/${area.areaRecordingId}/scores`, {
+                method: "PATCH",
+                body: formData,
               });
             }
-            if (!hasData) continue;
-            await fetch(`/api/inspections/${inspectionId}/recordings/${area.areaRecordingId}/scores`, {
-              method: "PATCH",
-              body: formData,
-            });
+          } catch (e) {
+            console.error("Failed to save follow-up responses:", e);
           }
-        } catch (e) {
-          console.error("Failed to save follow-up responses:", e);
         }
       }
-    }
 
-    if (blockIndex < blocks.length - 1) {
-      const nextBlock = blocks[blockIndex + 1];
-      if (nextBlock?.type === "unit") {
-        setConfigTargetBlockIndex(blockIndex + 1);
-        setScreen("unit_config");
+      if (blockIndex < blocks.length - 1) {
+        const nextBlock = blocks[blockIndex + 1];
+        if (nextBlock?.type === "unit") {
+          setConfigTargetBlockIndex(blockIndex + 1);
+          setScreen("unit_config");
+        } else {
+          setBlockIndex(blockIndex + 1);
+          setAreaIndex(0);
+          setScreen("inspection");
+        }
       } else {
-        setBlockIndex(blockIndex + 1);
-        setAreaIndex(0);
-        setScreen("inspection");
+        setScreen("freestyle");
       }
-    } else {
-      setScreen("freestyle");
+    } finally {
+      setIsSubmittingFollowUp(false);
     }
   };
 
@@ -995,13 +1012,25 @@ export default function InspectionFlowClient({
           <button
             type="button"
             onClick={() => handleFollowUpContinue()}
-            disabled={analysisLoading}
-            className="mt-6 w-full rounded-xl bg-[var(--color-accent)] py-4 text-[15px] font-semibold text-[var(--color-primary)] disabled:opacity-50"
+            disabled={analysisLoading || isSubmittingFollowUp}
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-accent)] py-4 text-[15px] font-semibold text-[var(--color-primary)] disabled:opacity-50"
           >
-            Continue to{" "}
-            {blockIndex < blocks.length - 1
-              ? blocks[blockIndex + 1]?.unitName
-              : "Freestyle Notes"}
+            {isSubmittingFollowUp ? (
+              <>
+                <span
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-primary)] border-t-transparent"
+                  aria-hidden
+                />
+                Saving & transcribing…
+              </>
+            ) : (
+              <>
+                Continue to{" "}
+                {blockIndex < blocks.length - 1
+                  ? blocks[blockIndex + 1]?.unitName
+                  : "Freestyle Notes"}
+              </>
+            )}
           </button>
         </main>
       </div>
@@ -1238,9 +1267,19 @@ export default function InspectionFlowClient({
             type="button"
             disabled={freestyleSubmitting}
             onClick={handleFreestyleSubmit}
-            className="mb-3 w-full rounded-xl bg-[var(--color-accent)] py-4 text-[15px] font-semibold text-[var(--color-primary)] disabled:opacity-50"
+            className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-accent)] py-4 text-[15px] font-semibold text-[var(--color-primary)] disabled:opacity-50"
           >
-            {freestyleSubmitting ? "Submitting…" : "Submit Inspection"}
+            {freestyleSubmitting ? (
+              <>
+                <span
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-primary)] border-t-transparent"
+                  aria-hidden
+                />
+                Submitting inspection & generating report…
+              </>
+            ) : (
+              "Submit Inspection"
+            )}
           </button>
           <button
             type="button"
@@ -1504,6 +1543,22 @@ export default function InspectionFlowClient({
       </main>
 
       <div className="fixed bottom-0 left-1/2 flex w-full max-w-[430px] -translate-x-1/2 flex-col border-t border-[var(--color-border)] bg-white p-6 pt-4 shadow-[0_-8px_30px_rgba(0,0,0,0.08)]">
+        {isSubmittingArea ? (
+          <div className="flex flex-col items-center justify-center py-8">
+            <div
+              className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-accent)]"
+              role="status"
+              aria-label="Saving"
+            />
+            <p className="mt-4 text-[15px] font-medium text-[var(--color-primary)]">
+              Saving recording & transcribing…
+            </p>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+              This may take a few seconds
+            </p>
+          </div>
+        ) : (
+          <>
         <p className="mb-1 text-center text-[32px] font-bold tabular-nums tracking-tight text-[var(--color-primary)]">
           {(recorder.status === "recording" || recorder.status === "paused" || recorder.status === "recorded")
             ? formatDuration(recorder.durationSeconds)
@@ -1610,6 +1665,8 @@ export default function InspectionFlowClient({
             {["recording", "paused"].includes(recorder.status) ? "Cancel recording" : "Back"}
           </button>
         </div>
+          </>
+        )}
       </div>
     </div>
   );
