@@ -654,11 +654,11 @@ export default function InspectionFlowClient({
   if (screen === "unit_config" && configTargetBlock && configTargetUnitId && unitConfigValues) {
     return (
       <div className="mx-auto flex min-h-screen max-w-[430px] flex-col bg-white">
-        <header className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-white px-6 py-5">
+        <header className="sticky top-0 z-50 min-w-0 border-b border-[var(--color-border)] bg-white px-6 py-5">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
             Unit Configuration
           </p>
-          <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-[var(--color-primary)]">
+          <h1 className="mt-1.5 min-w-0 break-all text-2xl font-bold tracking-tight text-[var(--color-primary)]">
             {configTargetUnitName}
           </h1>
         </header>
@@ -784,7 +784,7 @@ export default function InspectionFlowClient({
     return (
       <div className="mx-auto flex min-h-screen max-w-[430px] flex-col bg-white">
         <header className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-white px-6 py-5">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+          <p className="min-w-0 break-all text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
             {currentBlock?.unitName} Complete
           </p>
           <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-[var(--color-primary)]">
@@ -1013,7 +1013,7 @@ export default function InspectionFlowClient({
             type="button"
             onClick={() => handleFollowUpContinue()}
             disabled={analysisLoading || isSubmittingFollowUp}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-accent)] py-4 text-[15px] font-semibold text-[var(--color-primary)] disabled:opacity-50"
+            className="mt-6 flex w-full min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-[var(--color-accent)] py-4 text-[15px] font-semibold text-[var(--color-primary)] disabled:opacity-50"
           >
             {isSubmittingFollowUp ? (
               <>
@@ -1024,12 +1024,12 @@ export default function InspectionFlowClient({
                 Saving & transcribing…
               </>
             ) : (
-              <>
+              <span className="w-full break-all text-center">
                 Continue to{" "}
                 {blockIndex < blocks.length - 1
                   ? blocks[blockIndex + 1]?.unitName
                   : "Freestyle Notes"}
-              </>
+              </span>
             )}
           </button>
         </main>
@@ -1365,7 +1365,7 @@ export default function InspectionFlowClient({
         </div>
 
         <div className="mb-4 flex flex-wrap items-center justify-start gap-2">
-          <span className="inline-flex max-w-full break-words rounded-lg bg-[var(--color-bg-light)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-primary)]">
+          <span className="inline-flex max-w-full min-w-0 break-all rounded-lg bg-[var(--color-bg-light)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-primary)]">
             {currentBlock?.unitName}
           </span>
           {currentBlock?.type === "unit" &&
@@ -1657,8 +1657,9 @@ export default function InspectionFlowClient({
               if (["recording", "paused"].includes(recorder.status)) {
                 recorder.stop();
                 recorder.reset();
+              } else {
+                handleBack();
               }
-              handleBack();
             }}
             className="w-full rounded-xl bg-[var(--color-bg-light)] py-3 text-[15px] font-semibold text-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50"
           >

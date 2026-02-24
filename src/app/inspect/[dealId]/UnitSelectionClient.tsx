@@ -145,7 +145,7 @@ export default function UnitSelectionClient({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="break-words text-[17px] font-semibold text-[var(--color-primary)]">
+                    <h3 className="break-all text-[17px] font-semibold text-[var(--color-primary)]">
                       Unit {unit.apartment_sku}
                     </h3>
                     {unit.issues?.length > 0 && (
