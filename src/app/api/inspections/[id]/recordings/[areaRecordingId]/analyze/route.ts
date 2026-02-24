@@ -6,7 +6,8 @@ import OpenAI from "openai";
 import { getAreaRecording } from "@/lib/data";
 import { getDealById } from "@/lib/data";
 import { getInspection } from "@/lib/data";
-import { buildAnalysisPrompt, getQuestionsForArea } from "@/lib/analyzePrompt";
+import { buildAnalysisPrompt, getQuestionsForArea, getQuestionTextById } from "@/lib/analyzePrompt";
+import { getQuestionLabel } from "@/lib/questions";
 import { generateDeepDiveQuestions } from "@/lib/generateDeepDives";
 
 function loadOpenAIKey() {
@@ -178,6 +179,8 @@ export async function POST(
       {
         area_recording_id: areaRecordingId,
         question_id: s.question_id,
+        question_label: getQuestionLabel(s.question_id),
+        question_text: getQuestionTextById(s.question_id),
         score: s.score,
         details: s.details ?? null,
         follow_up_question: followUpQuestion,

@@ -69,6 +69,10 @@ If recordings and photos are not saving to Supabase, RLS is likely blocking inse
 
 For per-question AI scores and photos linked to questions, run `supabase/migration_question_scores.sql` in the SQL Editor.
 
+### 7b. User-friendly question info (optional)
+
+To store question labels and full question text in `ins_question_scores` for easier viewing in Supabase, run `supabase/migration_question_user_friendly.sql`.
+
 ### 8. Allow inspection completion (UPDATE)
 
 To mark inspections as submitted when the inspector finishes, run `supabase/migration_inspections_update.sql` in the SQL Editor.
