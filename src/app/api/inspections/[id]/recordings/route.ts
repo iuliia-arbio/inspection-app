@@ -236,7 +236,7 @@ export async function POST(
   const hasAudio = !!audioPath;
   const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
 
-  if (hasAudio && areaRecordingId && hasOpenAIKey) {
+  if (hasAudio && areaRecordingId && hasOpenAIKey && audioPath) {
     try {
       const { data: audioBlob, error: downloadError } = await supabase.storage
         .from(AUDIO_BUCKET)
