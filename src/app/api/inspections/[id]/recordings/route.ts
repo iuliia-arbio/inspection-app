@@ -176,6 +176,42 @@ export async function POST(
     areaRecordingId = inserted?.id;
   }
 
+  // Upload photos BEFORE transcription so they're saved even if Whisper times out
+  if (areaRecordingId && photos.length > 0) {
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i];
+      if (!(photo instanceof Blob) || photo.size === 0) continue;
+
+      const questionId = photoQuestionIds[i] ?? null;
+      const photoId = randomUUID();
+      const storagePath = `${inspectionId}/${areaId}/${photoId}.jpg`;
+
+      const { error: photoUploadError } = await supabase.storage
+        .from(PHOTOS_BUCKET)
+        .upload(storagePath, photo, {
+          contentType: photo.type || "image/jpeg",
+          upsert: false,
+        });
+
+      if (photoUploadError) {
+        console.error("Photo upload failed:", photoUploadError);
+        continue;
+      }
+
+      const { error: photoInsertError } = await supabase
+        .from("ins_inspection_photos")
+        .insert({
+          area_recording_id: areaRecordingId,
+          storage_path: storagePath,
+          question_id: questionId,
+        });
+
+      if (photoInsertError) {
+        console.error("ins_inspection_photos insert failed:", photoInsertError);
+      }
+    }
+  }
+
   loadOpenAIKey();
   const hasAudio = audio && audio.size > 0;
   const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
@@ -209,35 +245,6 @@ export async function POST(
         .update({ transcript_status: "failed" })
         .eq("id", areaRecordingId);
       if (updateError) console.error("Failed to update transcript_status:", updateError);
-    }
-  }
-
-  if (areaRecordingId && photos.length > 0) {
-    for (let i = 0; i < photos.length; i++) {
-      const photo = photos[i];
-      if (!(photo instanceof Blob) || photo.size === 0) continue;
-
-      const questionId = photoQuestionIds[i] ?? null;
-      const photoId = randomUUID();
-      const storagePath = `${inspectionId}/${areaId}/${photoId}.jpg`;
-
-      const { error: photoUploadError } = await supabase.storage
-        .from(PHOTOS_BUCKET)
-        .upload(storagePath, photo, {
-          contentType: photo.type || "image/jpeg",
-          upsert: false,
-        });
-
-      if (photoUploadError) {
-        console.error("Photo upload failed:", photoUploadError);
-        continue;
-      }
-
-      await supabase.from("ins_inspection_photos").insert({
-        area_recording_id: areaRecordingId,
-        storage_path: storagePath,
-        question_id: questionId,
-      });
     }
   }
 

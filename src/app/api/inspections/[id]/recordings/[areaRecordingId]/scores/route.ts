@@ -60,6 +60,35 @@ export async function PATCH(
   if (isFormData) {
     const formData = await request.formData();
     const audioKeys = [...formData.keys()].filter((k) => k.startsWith("audio_"));
+    const photos = formData.getAll("photos") as Blob[];
+    const photoQuestionIds = formData.getAll("photo_question_ids") as string[];
+
+    // Upload photos first so they're saved even if transcription/rescoring times out
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i];
+      if (!(photo instanceof Blob) || photo.size === 0) continue;
+      const questionId = photoQuestionIds[i] ?? null;
+      const photoId = randomUUID();
+      const storagePath = `${inspectionId}/followup_${areaRecordingId}/${photoId}.jpg`;
+
+      const { error: photoError } = await supabase.storage
+        .from(PHOTOS_BUCKET)
+        .upload(storagePath, photo, { contentType: photo.type || "image/jpeg", upsert: false });
+      if (photoError) {
+        console.error("Follow-up photo upload failed:", photoError);
+        continue;
+      }
+
+      const { error: photoInsertError } = await supabase.from("ins_inspection_photos").insert({
+        area_recording_id: areaRecordingId,
+        storage_path: storagePath,
+        question_id: questionId,
+      });
+      if (photoInsertError) {
+        console.error("ins_inspection_photos insert failed:", photoInsertError);
+      }
+    }
+
     loadOpenAIKey();
     const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
     const rescoredUpdates: { question_id: string; score: number; details: string }[] = [];
@@ -140,30 +169,6 @@ export async function PATCH(
           console.error("Rescore failed:", err);
         }
       }
-    }
-
-    const photos = formData.getAll("photos") as Blob[];
-    const photoQuestionIds = formData.getAll("photo_question_ids") as string[];
-    for (let i = 0; i < photos.length; i++) {
-      const photo = photos[i];
-      if (!(photo instanceof Blob) || photo.size === 0) continue;
-      const questionId = photoQuestionIds[i] ?? null;
-      const photoId = randomUUID();
-      const storagePath = `${inspectionId}/followup_${areaRecordingId}/${photoId}.jpg`;
-
-      const { error: photoError } = await supabase.storage
-        .from(PHOTOS_BUCKET)
-        .upload(storagePath, photo, { contentType: photo.type || "image/jpeg", upsert: false });
-      if (photoError) {
-        console.error("Follow-up photo upload failed:", photoError);
-        continue;
-      }
-
-      await supabase.from("ins_inspection_photos").insert({
-        area_recording_id: areaRecordingId,
-        storage_path: storagePath,
-        question_id: questionId,
-      });
     }
 
     return NextResponse.json({ ok: true, rescored: rescoredUpdates });
