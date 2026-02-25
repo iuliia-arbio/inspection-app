@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+import { STORAGE_BUCKETS } from "@/lib/constants";
 import { BASE_QUESTIONS, hasIssuesForArea, hasIssuesForAreaFromFocusAreas } from "@/lib/questions";
 import { buildBlocks, getBaseAreaId } from "@/lib/inspection";
 import { useVoiceRecorder, formatDuration } from "@/lib/useVoiceRecorder";
@@ -281,33 +283,84 @@ export default function InspectionFlowClient({
   const uploadAreaData = async (): Promise<{ areaRecordingId?: string }> => {
     if (inspectionId.startsWith("demo-")) return {};
     const hasAudio = !!recorder.blob;
-    const hasPhotos = Object.values(photosByQuestion).flat().length > 0;
-
-    const formData = new FormData();
-    if (hasAudio) {
-      formData.append("audio", recorder.blob!, "recording.webm");
-      formData.append("duration_seconds", String(recorder.durationSeconds));
-    }
-    formData.append("area_id", currentArea?.id ?? "");
-    formData.append("area_name", currentArea?.name ?? "");
-    formData.append(
-      "scope",
-      currentBlock?.type === "shared" ? "shared" : "unit"
+    const flatPhotos = Object.entries(photosByQuestion).flatMap(([questionId, photos]) =>
+      photos.map((photo) => ({ blob: photo.blob, questionId }))
     );
-    if (currentBlock?.type === "unit" && currentBlock.unitId) {
-      formData.append("apartment_id", currentBlock.unitId);
+    const areaId = currentArea?.id ?? "";
+
+    // Upload directly to Supabase Storage to avoid Vercel's 4.5MB request limit
+    let audioStoragePath: string | null = null;
+    const photoEntries: { storagePath: string; questionId: string | null }[] = [];
+
+    if (supabase) {
+      if (hasAudio && recorder.blob) {
+        const audioPath = `${inspectionId}/${areaId}.webm`;
+        const { error: audioErr } = await supabase.storage
+          .from(STORAGE_BUCKETS.AUDIO)
+          .upload(audioPath, recorder.blob, { contentType: "audio/webm", upsert: true });
+        if (audioErr) {
+          console.error("Direct audio upload failed:", audioErr);
+        } else {
+          audioStoragePath = audioPath;
+        }
+      }
+      for (const { blob, questionId } of flatPhotos) {
+        const photoId = crypto.randomUUID();
+        const storagePath = `${inspectionId}/${areaId}/${photoId}.jpg`;
+        const { error: photoErr } = await supabase.storage
+          .from(STORAGE_BUCKETS.PHOTOS)
+          .upload(storagePath, blob, { contentType: blob.type || "image/jpeg", upsert: false });
+        if (photoErr) {
+          console.error("Direct photo upload failed:", photoErr);
+        } else {
+          photoEntries.push({ storagePath, questionId });
+        }
+      }
     }
-    Object.entries(photosByQuestion).forEach(([questionId, photos]) => {
-      photos.forEach((photo, i) => {
-        formData.append("photos", photo.blob, `photo-${questionId}-${i}.jpg`);
+
+    // When supabase unavailable, fall back to FormData (may fail if payload > 4.5MB)
+    if (!supabase && (hasAudio || flatPhotos.length > 0)) {
+      const formData = new FormData();
+      if (hasAudio) {
+        formData.append("audio", recorder.blob!, "recording.webm");
+        formData.append("duration_seconds", String(recorder.durationSeconds));
+      }
+      formData.append("area_id", areaId);
+      formData.append("area_name", currentArea?.name ?? "");
+      formData.append("scope", currentBlock?.type === "shared" ? "shared" : "unit");
+      if (currentBlock?.type === "unit" && currentBlock.unitId) {
+        formData.append("apartment_id", currentBlock.unitId);
+      }
+      flatPhotos.forEach(({ blob, questionId }) => {
+        formData.append("photos", blob, "photo.jpg");
         formData.append("photo_question_ids", questionId);
       });
-    });
+      try {
+        const res = await fetch(`/api/inspections/${inspectionId}/recordings`, {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        return { areaRecordingId: data?.areaRecordingId };
+      } catch (e) {
+        console.error("Failed to upload area data (FormData fallback):", e);
+        return {};
+      }
+    }
 
     try {
       const res = await fetch(`/api/inspections/${inspectionId}/recordings`, {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          area_id: areaId,
+          area_name: currentArea?.name ?? "",
+          scope: currentBlock?.type === "shared" ? "shared" : "unit",
+          apartment_id: currentBlock?.type === "unit" ? currentBlock.unitId : null,
+          duration_seconds: recorder.durationSeconds,
+          audio_storage_path: audioStoragePath,
+          photo_entries: photoEntries,
+        }),
       });
       const data = await res.json();
       return { areaRecordingId: data?.areaRecordingId };
@@ -470,24 +523,60 @@ export default function InspectionFlowClient({
     if (inspectionId.startsWith("demo-")) return;
     if (!audio && photos.length === 0) return;
 
-    const formData = new FormData();
-    if (audio) {
-      formData.append("audio", audio.blob, "recording.webm");
-      formData.append("duration_seconds", String(audio.durationSeconds));
+    let audioStoragePath: string | null = null;
+    const photoEntries: { storagePath: string; questionId: string | null }[] = [];
+
+    if (supabase) {
+      if (audio) {
+        const audioPath = `${inspectionId}/${areaId}.webm`;
+        const { error: audioErr } = await supabase.storage
+          .from(STORAGE_BUCKETS.AUDIO)
+          .upload(audioPath, audio.blob, { contentType: "audio/webm", upsert: true });
+        if (!audioErr) audioStoragePath = audioPath;
+      }
+      for (const p of photos) {
+        const photoId = crypto.randomUUID();
+        const storagePath = `${inspectionId}/${areaId}/${photoId}.jpg`;
+        const { error: photoErr } = await supabase.storage
+          .from(STORAGE_BUCKETS.PHOTOS)
+          .upload(storagePath, p.blob, { contentType: p.blob.type || "image/jpeg", upsert: false });
+        if (!photoErr) photoEntries.push({ storagePath, questionId: "freestyle" });
+      }
+    } else {
+      const formData = new FormData();
+      if (audio) {
+        formData.append("audio", audio.blob, "recording.webm");
+        formData.append("duration_seconds", String(audio.durationSeconds));
+      }
+      formData.append("area_id", areaId);
+      formData.append("area_name", areaName);
+      formData.append("scope", "freestyle");
+      if (apartmentId) formData.append("apartment_id", apartmentId);
+      photos.forEach((p) => {
+        formData.append("photos", p.blob, "freestyle.jpg");
+        formData.append("photo_question_ids", "freestyle");
+      });
+      try {
+        await fetch(`/api/inspections/${inspectionId}/recordings`, { method: "POST", body: formData });
+      } catch (e) {
+        console.error("Failed to upload freestyle notes:", e);
+      }
+      return;
     }
-    formData.append("area_id", areaId);
-    formData.append("area_name", areaName);
-    formData.append("scope", "freestyle");
-    if (apartmentId) formData.append("apartment_id", apartmentId);
-    photos.forEach((p, i) => {
-      formData.append("photos", p.blob, `freestyle-${i}.jpg`);
-      formData.append("photo_question_ids", "freestyle");
-    });
 
     try {
       await fetch(`/api/inspections/${inspectionId}/recordings`, {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          area_id: areaId,
+          area_name: areaName,
+          scope: "freestyle",
+          apartment_id: apartmentId,
+          duration_seconds: audio?.durationSeconds ?? 0,
+          audio_storage_path: audioStoragePath,
+          photo_entries: photoEntries,
+        }),
       });
     } catch (e) {
       console.error("Failed to upload freestyle notes:", e);

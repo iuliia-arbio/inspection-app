@@ -75,46 +75,87 @@ export async function POST(
     );
   }
 
-  const formData = await request.formData();
-  const audio = formData.get("audio") as Blob | null;
-  const areaId = formData.get("area_id") as string | null;
-  const areaName = formData.get("area_name") as string | null;
-  const scope = formData.get("scope") as string | null;
-  const apartmentId = formData.get("apartment_id") as string | null;
-  const durationSeconds = parseInt(
-    (formData.get("duration_seconds") as string) ?? "0",
-    10
-  );
+  const contentType = request.headers.get("content-type") ?? "";
+  const isJson = contentType.includes("application/json");
 
-  const photos = formData.getAll("photos") as Blob[];
-  const photoQuestionIds = formData.getAll("photo_question_ids") as string[];
+  let areaId: string;
+  let areaName: string;
+  let scope: string;
+  let apartmentId: string | null;
+  let durationSeconds: number;
+  let audioPath: string | null;
+  let photoEntries: { storagePath: string; questionId: string | null }[];
+
+  if (isJson) {
+    const body = await request.json();
+    areaId = body.area_id ?? "";
+    areaName = body.area_name ?? "";
+    scope = body.scope ?? "";
+    apartmentId = body.apartment_id ?? null;
+    durationSeconds = parseInt(String(body.duration_seconds ?? 0), 10);
+    audioPath = body.audio_storage_path ?? null;
+    photoEntries = Array.isArray(body.photo_entries) ? body.photo_entries : [];
+  } else {
+    const formData = await request.formData();
+    const audio = formData.get("audio") as Blob | null;
+    areaId = (formData.get("area_id") as string) ?? "";
+    areaName = (formData.get("area_name") as string) ?? "";
+    scope = (formData.get("scope") as string) ?? "";
+    apartmentId = (formData.get("apartment_id") as string) ?? null;
+    durationSeconds = parseInt(
+      (formData.get("duration_seconds") as string) ?? "0",
+      10
+    );
+    const photos = formData.getAll("photos") as Blob[];
+    const photoQuestionIds = formData.getAll("photo_question_ids") as string[];
+
+    if (audio && audio.size > 0) {
+      const storagePath = `${inspectionId}/${areaId}.webm`;
+      const { error: uploadError } = await supabase.storage
+        .from(AUDIO_BUCKET)
+        .upload(storagePath, audio, {
+          contentType: "audio/webm",
+          upsert: true,
+        });
+      if (uploadError) {
+        console.error("Storage upload failed:", uploadError);
+        return NextResponse.json(
+          { error: "Failed to upload recording" },
+          { status: 500 }
+        );
+      }
+      audioPath = storagePath;
+    } else {
+      audioPath = null;
+    }
+    photoEntries = [];
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i];
+      if (!(photo instanceof Blob) || photo.size === 0) continue;
+      const photoId = randomUUID();
+      const storagePath = `${inspectionId}/${areaId}/${photoId}.jpg`;
+      const { error: photoUploadError } = await supabase.storage
+        .from(PHOTOS_BUCKET)
+        .upload(storagePath, photo, {
+          contentType: photo.type || "image/jpeg",
+          upsert: false,
+        });
+      if (photoUploadError) {
+        console.error("Photo upload failed:", photoUploadError);
+        continue;
+      }
+      photoEntries.push({
+        storagePath,
+        questionId: (photoQuestionIds[i] as string) ?? null,
+      });
+    }
+  }
 
   if (!areaId || !areaName || !scope) {
     return NextResponse.json(
       { error: "Missing area_id, area_name, or scope" },
       { status: 400 }
     );
-  }
-
-  let audioPath: string | null = null;
-
-  if (audio && audio.size > 0) {
-    const storagePath = `${inspectionId}/${areaId}.webm`;
-    const { error: uploadError } = await supabase.storage
-      .from(AUDIO_BUCKET)
-      .upload(storagePath, audio, {
-        contentType: "audio/webm",
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.error("Storage upload failed:", uploadError);
-      return NextResponse.json(
-        { error: "Failed to upload recording" },
-        { status: 500 }
-      );
-    }
-    audioPath = storagePath;
   }
 
   const { data: existing } = await supabase
@@ -176,36 +217,15 @@ export async function POST(
     areaRecordingId = inserted?.id;
   }
 
-  // Upload photos BEFORE transcription so they're saved even if Whisper times out
-  if (areaRecordingId && photos.length > 0) {
-    for (let i = 0; i < photos.length; i++) {
-      const photo = photos[i];
-      if (!(photo instanceof Blob) || photo.size === 0) continue;
-
-      const questionId = photoQuestionIds[i] ?? null;
-      const photoId = randomUUID();
-      const storagePath = `${inspectionId}/${areaId}/${photoId}.jpg`;
-
-      const { error: photoUploadError } = await supabase.storage
-        .from(PHOTOS_BUCKET)
-        .upload(storagePath, photo, {
-          contentType: photo.type || "image/jpeg",
-          upsert: false,
-        });
-
-      if (photoUploadError) {
-        console.error("Photo upload failed:", photoUploadError);
-        continue;
-      }
-
+  if (areaRecordingId && photoEntries.length > 0) {
+    for (const entry of photoEntries) {
       const { error: photoInsertError } = await supabase
         .from("ins_inspection_photos")
         .insert({
           area_recording_id: areaRecordingId,
-          storage_path: storagePath,
-          question_id: questionId,
+          storage_path: entry.storagePath,
+          question_id: entry.questionId,
         });
-
       if (photoInsertError) {
         console.error("ins_inspection_photos insert failed:", photoInsertError);
       }
@@ -213,30 +233,37 @@ export async function POST(
   }
 
   loadOpenAIKey();
-  const hasAudio = audio && audio.size > 0;
+  const hasAudio = !!audioPath;
   const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
 
   if (hasAudio && areaRecordingId && hasOpenAIKey) {
     try {
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      const buffer = Buffer.from(await audio.arrayBuffer());
-      const file = await toFile(buffer, "audio.webm");
-      const transcription = await openai.audio.transcriptions.create({
-        file,
-        model: "whisper-1",
-      });
-      const transcript = transcription.text?.trim() ?? "";
+      const { data: audioBlob, error: downloadError } = await supabase.storage
+        .from(AUDIO_BUCKET)
+        .download(audioPath);
+      if (downloadError || !audioBlob) {
+        console.error("Failed to download audio for transcription:", downloadError);
+      } else {
+        const buffer = Buffer.from(await audioBlob.arrayBuffer());
+        const file = await toFile(buffer, "audio.webm");
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const transcription = await openai.audio.transcriptions.create({
+          file,
+          model: "whisper-1",
+        });
+        const transcript = transcription.text?.trim() ?? "";
 
-      const { error: updateError } = await supabase
-        .from("ins_area_recordings")
-        .update({
-          transcript: transcript || null,
-          transcript_status: transcript ? "completed" : "pending",
-        })
-        .eq("id", areaRecordingId);
+        const { error: updateError } = await supabase
+          .from("ins_area_recordings")
+          .update({
+            transcript: transcript || null,
+            transcript_status: transcript ? "completed" : "pending",
+          })
+          .eq("id", areaRecordingId);
 
-      if (updateError) {
-        console.error("Failed to save transcript:", updateError);
+        if (updateError) {
+          console.error("Failed to save transcript:", updateError);
+        }
       }
     } catch (err) {
       console.error("Whisper transcription failed:", err);
