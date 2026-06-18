@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getHubSupabase } from '@/lib/firstVisit/hubSupabase';
+import { getHubUserClient } from '@/lib/firstVisit/hubSupabaseServer';
 import { getHubRouteContext } from '@/lib/firstVisit/hubSupabaseAdmin';
 
 export async function POST(req: Request) {
-  const ctx = await getHubRouteContext(getHubSupabase());
+  const ctx = await getHubRouteContext(await getHubUserClient());
   if (!ctx) return NextResponse.json({ error: 'unauth' }, { status: 401 });
   const { supabase } = ctx;
 

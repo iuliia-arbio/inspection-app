@@ -1,5 +1,5 @@
 import OpenAI, { toFile } from 'openai';
-import { getHubSupabase } from '@/lib/firstVisit/hubSupabase';
+import { getHubUserClient } from '@/lib/firstVisit/hubSupabaseServer';
 import { getHubRouteContext } from '@/lib/firstVisit/hubSupabaseAdmin';
 import { loadOpenAIKey } from '@/lib/openaiKey';
 import {
@@ -21,7 +21,7 @@ const json = (body: unknown, status = 200) =>
   });
 
 export async function POST(req: Request): Promise<Response> {
-  const ctx = await getHubRouteContext(getHubSupabase());
+  const ctx = await getHubRouteContext(await getHubUserClient());
   if (!ctx) return json({ error: 'unauth' }, 401);
 
   const form = await req.formData();

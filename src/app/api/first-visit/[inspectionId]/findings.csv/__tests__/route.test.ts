@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('@/lib/firstVisit/hubSupabase', () => ({ getHubSupabase: vi.fn() }));
+vi.mock('@/lib/firstVisit/hubSupabaseServer', () => ({ getHubUserClient: vi.fn() }));
 
 import { GET, parseFindingMediaStep } from '../route';
-import { getHubSupabase } from '@/lib/firstVisit/hubSupabase';
+import { getHubUserClient } from '@/lib/firstVisit/hubSupabaseServer';
 
 const asMock = (fn: unknown) => fn as never as ReturnType<typeof vi.fn>;
 
@@ -73,7 +73,7 @@ describe('GET /api/first-visit/[inspectionId]/findings.csv', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('returns 401 when getHubRouteContext returns null', async () => {
-    asMock(getHubSupabase).mockReturnValue(null);
+    asMock(getHubUserClient).mockResolvedValue(null);
     const res = await GET(new Request('http://x/findings.csv'), {
       params: makeParams('i1'),
     });
@@ -82,7 +82,7 @@ describe('GET /api/first-visit/[inspectionId]/findings.csv', () => {
 
   it('returns text/csv with the header row', async () => {
     const createSignedUrl = vi.fn();
-    asMock(getHubSupabase).mockReturnValue(
+    asMock(getHubUserClient).mockResolvedValue(
       makeClient({ answers: [], targets: [], media: [], createSignedUrl }),
     );
     const res = await GET(new Request('http://x/findings.csv'), {
@@ -101,7 +101,7 @@ describe('GET /api/first-visit/[inspectionId]/findings.csv', () => {
 
   it('uses "Building / common" for a location-scoped finding', async () => {
     const createSignedUrl = vi.fn();
-    asMock(getHubSupabase).mockReturnValue(
+    asMock(getHubUserClient).mockResolvedValue(
       makeClient({
         answers: [
           { target_id: 't1', scope: 'location', question_key: 'issue_name', step_index: 0, value: 'Leak' },
@@ -123,7 +123,7 @@ describe('GET /api/first-visit/[inspectionId]/findings.csv', () => {
     const createSignedUrl = vi
       .fn()
       .mockResolvedValue({ data: { signedUrl: 'https://signed/lobby' }, error: null });
-    asMock(getHubSupabase).mockReturnValue(
+    asMock(getHubUserClient).mockResolvedValue(
       makeClient({
         answers: [
           { target_id: 'loc1', scope: 'location', question_key: 'prop_issue_name', step_index: 0, value: 'Broken lobby light' },
@@ -154,7 +154,7 @@ describe('GET /api/first-visit/[inspectionId]/findings.csv', () => {
     const createSignedUrl = vi
       .fn()
       .mockResolvedValue({ data: { signedUrl: 'https://signed/url1' }, error: null });
-    asMock(getHubSupabase).mockReturnValue(
+    asMock(getHubUserClient).mockResolvedValue(
       makeClient({
         answers: [
           { target_id: 't1', scope: 'unit_category', question_key: 'issue_name', step_index: 2, value: 'Chair' },
@@ -179,7 +179,7 @@ describe('GET /api/first-visit/[inspectionId]/findings.csv', () => {
 
   it('renders an individually skipped field as an empty cell, not [object Object]', async () => {
     const createSignedUrl = vi.fn();
-    asMock(getHubSupabase).mockReturnValue(
+    asMock(getHubUserClient).mockResolvedValue(
       makeClient({
         answers: [
           { target_id: 't1', scope: 'unit_category', question_key: 'issue_name', step_index: 0, value: 'Chair' },
@@ -204,7 +204,7 @@ describe('GET /api/first-visit/[inspectionId]/findings.csv', () => {
   it('emits no row for a removed repeater block (all fields carry the __removed sentinel)', async () => {
     const createSignedUrl = vi.fn();
     const removed = { __skipped: true, reason: '__removed' };
-    asMock(getHubSupabase).mockReturnValue(
+    asMock(getHubUserClient).mockResolvedValue(
       makeClient({
         answers: [
           // Step 0 was removed via StepGroup.removeBlock — every answered
@@ -233,7 +233,7 @@ describe('GET /api/first-visit/[inspectionId]/findings.csv', () => {
 
   it('ignores answers with the step_index -1 "not a repeater row" sentinel', async () => {
     const createSignedUrl = vi.fn();
-    asMock(getHubSupabase).mockReturnValue(
+    asMock(getHubUserClient).mockResolvedValue(
       makeClient({
         answers: [
           { target_id: 't1', scope: 'unit_category', question_key: 'issue_name', step_index: -1, value: 'Stray' },

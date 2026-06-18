@@ -1,4 +1,4 @@
-import { getHubSupabase } from '@/lib/firstVisit/hubSupabase';
+import { getHubUserClient } from '@/lib/firstVisit/hubSupabaseServer';
 import { getHubRouteContext } from '@/lib/firstVisit/hubSupabaseAdmin';
 import { buildFindingsCsv, type FindingRow } from '@/lib/firstVisit/findingsCsv';
 
@@ -90,7 +90,7 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ inspectionId: string }> },
 ) {
-  const ctx = await getHubRouteContext(getHubSupabase());
+  const ctx = await getHubRouteContext(await getHubUserClient());
   if (!ctx) return new Response(JSON.stringify({ error: 'unauth' }), { status: 401 });
   const { supabase } = ctx;
 

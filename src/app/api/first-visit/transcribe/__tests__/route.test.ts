@@ -3,7 +3,7 @@
 // jsdom's, whose Blob hangs undici's multipart formData() parser.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('@/lib/firstVisit/hubSupabase', () => ({ getHubSupabase: vi.fn() }));
+vi.mock('@/lib/firstVisit/hubSupabaseServer', () => ({ getHubUserClient: vi.fn() }));
 vi.mock('@/lib/firstVisit/hubSupabaseAdmin', () => ({ getHubRouteContext: vi.fn() }));
 
 const transcribe = vi.fn();
