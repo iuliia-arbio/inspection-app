@@ -8,7 +8,6 @@ import { createHandlers } from '@/lib/firstVisit/handlers';
 import { type HubSnapshot } from '@/lib/firstVisit/snapshot';
 import { SyncBadge } from '@/components/firstVisit/SyncBadge';
 import { ExportMenu } from '@/components/firstVisit/ExportMenu';
-import { EditSurveyButton } from '@/components/firstVisit/EditSurveyButton';
 import { ProgressRing } from '@/components/firstVisit/ProgressRing';
 import { track } from '@/lib/firstVisit/analytics';
 import { UnitSurvey, type SurveyTarget } from './UnitSurvey';
@@ -522,7 +521,6 @@ export default function VisitNavigator({
             })()}
           </div>
           <div className="flex shrink-0 items-center gap-2 text-xs">
-            <EditSurveyButton />
             <SyncBadge pending={pending} />
             <button
               onClick={syncNow}
