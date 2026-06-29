@@ -56,6 +56,12 @@ export function useSectionVoiceFill(opts: Options) {
   const summarySlugRef = useRef<string | undefined>(undefined);
   const qualitativeOnlyRef = useRef(false);
   const lastRows = useRef<LocalAnswer[]>([]);
+  // Holds the latest onStop so the recorder's silence callback (fired from a
+  // closure created at start time) always invokes the current handler.
+  const onStopRef = useRef<() => void>(() => {});
+  // Re-entrancy guard so a silence auto-stop and a manual stop tap can't both
+  // process the same clip.
+  const stoppingRef = useRef(false);
 
   useEffect(() => () => { mounted.current = false; }, []);
   useEffect(() => {
@@ -94,7 +100,11 @@ export function useSectionVoiceFill(opts: Options) {
       summarySlugRef.current = summarySlug;
       qualitativeOnlyRef.current = qualitativeOnly;
       try {
-        await start();
+        // Pass a silence callback so a natural pause auto-finishes the clip
+        // (fills the fields) without a manual stop tap.
+        await start(() => {
+          void onStopRef.current();
+        });
         captions.start();
         startedAt.current = Date.now();
         setElapsedMs(0);
@@ -111,6 +121,9 @@ export function useSectionVoiceFill(opts: Options) {
   );
 
   const onStop = useCallback(async () => {
+    // Guard against double-processing (silence auto-stop + a manual stop tap).
+    if (stoppingRef.current) return;
+    stoppingRef.current = true;
     clearTimer();
     captions.stop();
     const promptId = activePromptId;
@@ -156,12 +169,18 @@ export function useSectionVoiceFill(opts: Options) {
         setErrorPromptId(promptId);
       }
     } finally {
+      stoppingRef.current = false;
       if (mounted.current) {
         setStatus('idle');
         setActivePromptId(null);
       }
     }
   }, [stop, captions, clearTimer, activePromptId, opts]);
+
+  // Keep the silence callback pointed at the current onStop.
+  useEffect(() => {
+    onStopRef.current = onStop;
+  }, [onStop]);
 
   const acceptAll = useCallback(async () => {
     const updated = await acceptAiRows(lastRows.current);
