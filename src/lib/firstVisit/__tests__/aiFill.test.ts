@@ -82,6 +82,54 @@ describe('writeAiSuggestions', () => {
     expect(stored?.value).toBe('Mostly');
   });
 
+  it('acceptAiRows keeps a value the user typed after the voice fill', async () => {
+    const extraction: ValidatedExtraction = {
+      singles: {
+        fv_furniture_status: { value: 'Mostly', confidence: 0.8 },
+        fv_room_size: { value: '20 sqm', confidence: 0.9 },
+      },
+      items: [], summary: null, warnings: [],
+    };
+    const { writtenRows } = await writeAiSuggestions({ ...base, extraction, answers: {} });
+    // Inspector manually answers one suggested field AFTER the voice fill (same row id).
+    const typed = writtenRows.find((r) => r.question_key === 'fv_furniture_status')!;
+    await localDb.answers.put({ ...typed, value: 'Yes fully', was_prefilled: false, updated_at: 'later' });
+
+    const updated = await acceptAiRows(writtenRows); // stale snapshots passed in
+    // The typed field is skipped — user's value wins.
+    expect(updated.find((r) => r.question_key === 'fv_furniture_status')).toBeUndefined();
+    const stored = await localDb.answers.get(typed.id);
+    expect(stored?.value).toBe('Yes fully');
+    // The untouched suggestion still gets accepted.
+    expect(updated.find((r) => r.question_key === 'fv_room_size')?.value).toBe('20 sqm');
+  });
+
+  it('acceptAiRows spreads from the fresh row, preserving a note added meanwhile', async () => {
+    const extraction: ValidatedExtraction = {
+      singles: { fv_furniture_status: { value: 'Mostly', confidence: 0.8 } }, items: [], summary: null, warnings: [],
+    };
+    const { writtenRows } = await writeAiSuggestions({ ...base, extraction, answers: {} });
+    // Inspector adds a note (still unconfirmed suggestion) after the voice fill.
+    await localDb.answers.put({ ...writtenRows[0], notes: 'check again next visit' });
+
+    const updated = await acceptAiRows(writtenRows);
+    expect(updated).toHaveLength(1);
+    expect(updated[0].value).toBe('Mostly');
+    expect(updated[0].was_accepted_as_is).toBe(true);
+    expect(updated[0].notes).toBe('check again next visit');
+    expect((await localDb.answers.get(writtenRows[0].id))?.notes).toBe('check again next visit');
+  });
+
+  it('acceptAiRows skips rows deleted since the suggestion was written', async () => {
+    const extraction: ValidatedExtraction = {
+      singles: { fv_furniture_status: { value: 'Mostly', confidence: 0.8 } }, items: [], summary: null, warnings: [],
+    };
+    const { writtenRows } = await writeAiSuggestions({ ...base, extraction, answers: {} });
+    await localDb.answers.delete(writtenRows[0].id);
+    const updated = await acceptAiRows(writtenRows);
+    expect(updated).toHaveLength(0);
+  });
+
   it('writes the qualitative summary directly to value when summarySlug is set', async () => {
     const extraction: ValidatedExtraction = {
       singles: { fv_furniture_status: { value: 'Mostly', confidence: 0.8 } },
