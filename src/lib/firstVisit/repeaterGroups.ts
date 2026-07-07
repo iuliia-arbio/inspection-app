@@ -27,6 +27,11 @@ const GROUPS: Record<string, RepeaterGroupMeta> = {
     intro: 'List each issue found — one per problem (broken, damaged, dirty, or missing).',
     itemNoun: 'Issue',
   },
+  prop_issue: {
+    title: 'Building issue log',
+    intro: 'List each building / common-area issue — one per problem (broken, damaged, dirty, or missing).',
+    itemNoun: 'Issue',
+  },
   item: {
     title: 'Appliances & amenities',
     intro: 'Catalogue each appliance or amenity — its kind, brand, location, and how to use it.',
