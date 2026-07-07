@@ -323,6 +323,70 @@ export const QUESTION_STRUCTURE: StructureOverlay = {
       "equals": true
     }
   },
+  "prop_issue_name": {
+    "group_id": "prop_issue",
+    "visible_when": {
+      "question": "fv_building_issues_found",
+      "equals": true
+    }
+  },
+  "prop_issue_type": {
+    "group_id": "prop_issue",
+    "visible_when": {
+      "question": "fv_building_issues_found",
+      "equals": true
+    }
+  },
+  "prop_issue_area": {
+    "group_id": "prop_issue",
+    "visible_when": {
+      "question": "fv_building_issues_found",
+      "equals": true
+    }
+  },
+  "prop_issue_resolution": {
+    "group_id": "prop_issue",
+    "visible_when": {
+      "question": "fv_building_issues_found",
+      "equals": true
+    }
+  },
+  "prop_issue_quantity": {
+    "group_id": "prop_issue",
+    "visible_when": {
+      "question": "fv_building_issues_found",
+      "equals": true
+    }
+  },
+  "prop_issue_cost_estimate_eur": {
+    "group_id": "prop_issue",
+    "visible_when": {
+      "question": "fv_building_issues_found",
+      "equals": true
+    }
+  },
+  "prop_issue_urgency": {
+    "group_id": "prop_issue",
+    "visible_when": {
+      "question": "fv_building_issues_found",
+      "equals": true
+    }
+  },
+  "prop_issue_media": {
+    "mode": "observe",
+    "group_id": "prop_issue",
+    "visible_when": {
+      "question": "fv_building_issues_found",
+      "equals": true
+    }
+  },
+  "prop_issue_notes": {
+    "group_id": "prop_issue",
+    "visible_when": {
+      "question": "fv_building_issues_found",
+      "equals": true
+    }
+  },
   "fv_unit_floor_number": {
     "pms_target": "profile.floor"
   },

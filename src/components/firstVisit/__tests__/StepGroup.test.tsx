@@ -121,4 +121,54 @@ describe('StepGroup', () => {
     // Soft-delete writes happen for the questions with answers in the removed step.
     await waitFor(() => expect(onChange).toHaveBeenCalled());
   });
+
+  it('adding after a soft-remove allocates a fresh step_index past the tombstones', async () => {
+    const user = userEvent.setup();
+    const answer = (id: string, slug: string, stepIndex: number, value: unknown): LocalAnswer =>
+      ({
+        id,
+        inspection_id: 'i1',
+        target_id: 't1',
+        scope: 'location',
+        question_key: slug,
+        area_key: 'p1',
+        step_index: stepIndex,
+        value,
+        was_prefilled: false,
+        was_accepted_as_is: false,
+        created_at: '2026-06-01',
+        updated_at: '2026-06-01',
+      }) as LocalAnswer;
+    // Seed: block 0 answered, block 1 soft-removed (tombstone rows persist with
+    // the '__removed' marker — removeBlock never hard-deletes them).
+    const removed = { __skipped: true, reason: '__removed' };
+    const { onChange } = setup({
+      't1::p1::q1': answer('a1', 'q1', 0, 'first'),
+      't1::p1::q1::1': answer('a2', 'q1', 1, removed),
+      't1::p1::q2::1': answer('a3', 'q2', 1, removed),
+    });
+
+    // The tombstoned block stays hidden.
+    expect(screen.getByText('Step 1')).toBeInTheDocument();
+    expect(screen.queryByText('Step 2')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '+ Add step' }));
+    expect(screen.getByText('Step 2')).toBeInTheDocument();
+
+    // The new block's fields are empty and editable (not swallowed by the
+    // '__removed' tombstones at step_index 1).
+    const inputs = screen.getAllByRole('textbox');
+    // Block 0 renders q1 ('first') + q2; the new block adds two more.
+    const newInputs = inputs.slice(-2);
+    for (const el of newInputs) {
+      expect((el as HTMLTextAreaElement).value).toBe('');
+      expect(el).toBeEnabled();
+    }
+
+    // Typing in the new block writes at step_index 2, NOT the tombstoned 1.
+    await user.type(newInputs[0], 'x');
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const calls = onChange.mock.calls as unknown[][];
+    expect(calls[calls.length - 1][2]).toBe(2);
+  });
 });

@@ -14,9 +14,14 @@ const rows: FindingRow[] = [
 ];
 
 describe('buildFindingsCsv', () => {
+  it('starts with exactly one UTF-8 BOM (Excel-on-Windows encoding hint)', () => {
+    const csv = buildFindingsCsv(rows);
+    expect(csv.startsWith('\uFEFF')).toBe(true);
+    expect(csv.slice(1).includes('\uFEFF')).toBe(false);
+  });
   it('emits the header with a list_type column', () => {
     const lines = buildFindingsCsv(rows).split('\n');
-    expect(lines[0]).toBe('unit_identifier,list_type,item_name,category,location_in_unit,resolution,quantity,cost_estimate_eur,urgency,notes,media_links');
+    expect(lines[0]).toBe('\uFEFFunit_identifier,list_type,item_name,category,location_in_unit,resolution,quantity,cost_estimate_eur,urgency,notes,media_links');
   });
   it('derives list_type from resolution', () => {
     expect(listTypeFor('Replace')).toBe('Shopping');

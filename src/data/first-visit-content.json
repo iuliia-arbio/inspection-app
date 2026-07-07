@@ -1080,6 +1080,147 @@
       ]
     },
     {
+      "id": "16",
+      "label": "Building condition & issues",
+      "questions": [
+        {
+          "slug": "fv_building_issues_found",
+          "label": "Any issues found in the building / common areas?",
+          "description": "Gate for the building-level issue log (common areas, exterior, shared infrastructure — not unit-internal).",
+          "scope": "location",
+          "type": "boolean",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true,
+          "phase_id": "16",
+          "phase_label": "Building condition & issues"
+        },
+        {
+          "slug": "prop_issue_name",
+          "label": "Issue / item name",
+          "description": "Repeat the block per issue.",
+          "scope": "location",
+          "type": "text",
+          "options": [],
+          "required": true,
+          "phase_id": "16",
+          "phase_label": "Building condition & issues"
+        },
+        {
+          "slug": "prop_issue_type",
+          "label": "Issue type",
+          "description": null,
+          "scope": "location",
+          "type": "select",
+          "options": [
+            "Furniture",
+            "Equipment",
+            "Maintenance",
+            "Other"
+          ],
+          "required": true,
+          "phase_id": "16",
+          "phase_label": "Building condition & issues"
+        },
+        {
+          "slug": "prop_issue_area",
+          "label": "Area",
+          "description": null,
+          "scope": "location",
+          "type": "select",
+          "options": [
+            "Lobby",
+            "Entrance",
+            "Stairwell",
+            "Elevator",
+            "Basement",
+            "Courtyard",
+            "Exterior",
+            "Other"
+          ],
+          "required": false,
+          "phase_id": "16",
+          "phase_label": "Building condition & issues"
+        },
+        {
+          "slug": "prop_issue_resolution",
+          "label": "Resolution",
+          "description": null,
+          "scope": "location",
+          "type": "select",
+          "options": [
+            "Buy",
+            "Fix",
+            "Replace",
+            "Monitor"
+          ],
+          "required": true,
+          "phase_id": "16",
+          "phase_label": "Building condition & issues"
+        },
+        {
+          "slug": "prop_issue_quantity",
+          "label": "Quantity",
+          "description": null,
+          "scope": "location",
+          "type": "number",
+          "options": [],
+          "required": false,
+          "phase_id": "16",
+          "phase_label": "Building condition & issues"
+        },
+        {
+          "slug": "prop_issue_cost_estimate_eur",
+          "label": "Cost estimate (€)",
+          "description": null,
+          "scope": "location",
+          "type": "number",
+          "options": [],
+          "required": false,
+          "phase_id": "16",
+          "phase_label": "Building condition & issues"
+        },
+        {
+          "slug": "prop_issue_urgency",
+          "label": "Urgency",
+          "description": null,
+          "scope": "location",
+          "type": "select",
+          "options": [
+            "Blocks go-live",
+            "Nice-to-have"
+          ],
+          "required": false,
+          "phase_id": "16",
+          "phase_label": "Building condition & issues"
+        },
+        {
+          "slug": "prop_issue_media",
+          "label": "Photo / video of issue",
+          "description": null,
+          "scope": "location",
+          "type": "file",
+          "options": [],
+          "required": true,
+          "phase_id": "16",
+          "phase_label": "Building condition & issues"
+        },
+        {
+          "slug": "prop_issue_notes",
+          "label": "Issue notes",
+          "description": null,
+          "scope": "location",
+          "type": "text",
+          "options": [],
+          "required": false,
+          "phase_id": "16",
+          "phase_label": "Building condition & issues"
+        }
+      ]
+    },
+    {
       "id": "8",
       "label": "Unit identity",
       "questions": [

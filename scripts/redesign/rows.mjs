@@ -196,6 +196,39 @@ export const PHASES = [
       visible_when: { question: 'fv_wifi_present', equals: true } },
   ]},
 
+  // ── 16 · Building condition & issues (location) ──────────────────────────
+  // Property-level mirror of the unit issue log (phase 10). Distinct
+  // `prop_issue_*` slugs + group_id 'prop_issue' so the hub can tell a
+  // building/common-area defect apart from a unit defect. Placed here (after
+  // the location phases, before the unit phases) so it renders within the
+  // property block; id is '16' (next free) to avoid renumbering 8–15.
+  { id: '16', label: 'Building condition & issues', scope: 'location', questions: [
+    { slug: 'fv_building_issues_found', label: 'Any issues found in the building / common areas?', type: 'boolean', options: YESNO, required: true,
+      description: 'Gate for the building-level issue log (common areas, exterior, shared infrastructure — not unit-internal).' },
+    { slug: 'prop_issue_name', label: 'Issue / item name', type: 'text', required: true, group_id: 'prop_issue',
+      description: 'Repeat the block per issue.', visible_when: { question: 'fv_building_issues_found', equals: true } },
+    { slug: 'prop_issue_type', label: 'Issue type', type: 'select',
+      options: ['Furniture', 'Equipment', 'Maintenance', 'Other'], required: true, group_id: 'prop_issue',
+      visible_when: { question: 'fv_building_issues_found', equals: true } },
+    { slug: 'prop_issue_area', label: 'Area', type: 'select',
+      options: ['Lobby', 'Entrance', 'Stairwell', 'Elevator', 'Basement', 'Courtyard', 'Exterior', 'Other'], required: false, group_id: 'prop_issue',
+      visible_when: { question: 'fv_building_issues_found', equals: true } },
+    { slug: 'prop_issue_resolution', label: 'Resolution', type: 'select',
+      options: ['Buy', 'Fix', 'Replace', 'Monitor'], required: true, group_id: 'prop_issue',
+      visible_when: { question: 'fv_building_issues_found', equals: true } },
+    { slug: 'prop_issue_quantity', label: 'Quantity', type: 'number', required: false, group_id: 'prop_issue',
+      visible_when: { question: 'fv_building_issues_found', equals: true } },
+    { slug: 'prop_issue_cost_estimate_eur', label: 'Cost estimate (€)', type: 'number', required: false, group_id: 'prop_issue',
+      visible_when: { question: 'fv_building_issues_found', equals: true } },
+    { slug: 'prop_issue_urgency', label: 'Urgency', type: 'select',
+      options: ['Blocks go-live', 'Nice-to-have'], required: false, group_id: 'prop_issue',
+      visible_when: { question: 'fv_building_issues_found', equals: true } },
+    { slug: 'prop_issue_media', label: 'Photo / video of issue', type: 'file', mode: 'observe', required: true, group_id: 'prop_issue',
+      visible_when: { question: 'fv_building_issues_found', equals: true } },
+    { slug: 'prop_issue_notes', label: 'Issue notes', type: 'text', required: false, group_id: 'prop_issue',
+      visible_when: { question: 'fv_building_issues_found', equals: true } },
+  ]},
+
   // ── 8 · Unit identity (unit_category) ────────────────────────────────────
   { id: '8', label: 'Unit identity', scope: 'unit_category', questions: [
     { slug: 'fv_unit_floor_number', label: 'Floor of unit', type: 'text', required: true },

@@ -110,6 +110,7 @@ function buildRow(args: {
     area_key: areaKey,
     step_index: stepIndex,
     value: null, // suggestion is unconfirmed until the inspector Accepts/edits
+    notes: existing?.notes, // this literal replaces the whole row — keep a note-only stub's note
     data_point_slug: slug,
     hub_suggestion_snapshot: { __ai: true, value: field.value, confidence: field.confidence } as AiSnapshot,
     was_prefilled: true,
@@ -177,6 +178,7 @@ export async function writeAiSuggestions(args: WriteArgs): Promise<AiFillResult>
       area_key: areaKey,
       step_index: null,
       value: extraction.summary,
+      notes: existing?.notes, // re-record replaces the row — keep an attached note
       data_point_slug: args.summarySlug,
       was_prefilled: true,
       was_accepted_as_is: false,
@@ -196,11 +198,17 @@ export async function writeAiSuggestions(args: WriteArgs): Promise<AiFillResult>
 // Accept a batch of AI suggestion rows in one go ("Accept all from this prompt"):
 // copy each row's snapshot value into `value` and mark was_accepted_as_is, exactly
 // as the per-field Accept button does. Only touches still-unconfirmed AI rows.
+// The rows passed in are snapshots captured at suggestion-write time, so each is
+// re-read from Dexie by id and the decision/spread made on the FRESH row — a
+// value the inspector typed (or notes added) after the voice fill must win over
+// the stale snapshot, and rows deleted since are skipped.
 // Returns the updated rows so the survey can merge them into state.
 export async function acceptAiRows(rows: LocalAnswer[]): Promise<LocalAnswer[]> {
   const now = new Date().toISOString();
   const updated: LocalAnswer[] = [];
-  for (const row of rows) {
+  const fresh = await localDb.answers.bulkGet(rows.map((r) => r.id));
+  for (const row of fresh) {
+    if (!row) continue; // deleted since the suggestion was written
     if (!isAiSnapshot(row.hub_suggestion_snapshot)) continue;
     if (row.value != null || row.was_accepted_as_is) continue; // already confirmed/edited
     const value = unwrapAiSnapshot(row.hub_suggestion_snapshot);

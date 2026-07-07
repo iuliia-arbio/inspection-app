@@ -15,9 +15,10 @@ describe('first-visit question config', () => {
     expect(CONFIG_META.version).toMatch(/^\d{4}-\d{2}-\d{2}/);
     expect(CONFIG_META.counts.questions).toBe(ALL_QUESTIONS.length);
     expect(CONFIG_META.counts.phases).toBe(PHASES.length);
-    // Redesign V1 ships 15 phases / 135 questions.
-    expect(CONFIG_META.counts.phases).toBe(15);
-    expect(CONFIG_META.counts.questions).toBe(135);
+    // Redesign V1 shipped 15 phases / 135 questions; +1 location phase
+    // (Building condition & issues, id 16) added a 10-question issue log.
+    expect(CONFIG_META.counts.phases).toBe(16);
+    expect(CONFIG_META.counts.questions).toBe(145);
   });
 
   it('every question has a known scope', () => {

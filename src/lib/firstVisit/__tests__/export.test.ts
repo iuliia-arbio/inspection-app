@@ -24,5 +24,8 @@ describe('exportInspection', () => {
     expect(zip.file('manifest.json')).not.toBeNull();
     const csv = await zip.file('answers.csv')!.async('string');
     expect(csv).toContain('q,r,v');
+    // UTF-8 BOM first so Excel on Windows decodes umlauts correctly.
+    expect(csv.startsWith('\uFEFF')).toBe(true);
+    expect(csv.slice(1).includes('\uFEFF')).toBe(false);
   });
 });
