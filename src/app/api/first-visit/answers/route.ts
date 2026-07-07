@@ -8,13 +8,14 @@ export async function POST(req: Request) {
   const { supabase } = ctx;
 
   const a = await req.json();
-  // step_index coordinate for block-repeater answers. Accepted as either a
-  // finite number or null; anything else (undefined, string, NaN) collapses
-  // to null so the column stays clean.
+  // step_index coordinate for block-repeater answers. Accepted as a finite
+  // number; anything else (undefined, null, string, NaN) collapses to the -1
+  // sentinel so the NOT NULL column joins the unique index cleanly (Postgres
+  // treats NULLs as distinct, so null could not participate in dedupe).
   const stepIndex =
     typeof a.step_index === 'number' && Number.isFinite(a.step_index)
       ? a.step_index
-      : null;
+      : -1;
   const row = {
     id: a.id,
     inspection_id: a.inspection_id,
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
   };
   const { error } = await supabase
     .from('first_visit_answers')
-    .upsert(row, { onConflict: 'target_id,question_key,area_key' });
+    .upsert(row, { onConflict: 'target_id,question_key,area_key,step_index' });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
