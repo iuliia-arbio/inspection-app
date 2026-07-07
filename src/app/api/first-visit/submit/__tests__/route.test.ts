@@ -91,21 +91,80 @@ describe('POST /api/first-visit/submit', () => {
     expect(body.skipped.unknown_slugs).toEqual(['p3_parking__summary']);
   });
 
-  it('skips repeater rows (step_index >= 0) from the value push and reports them', async () => {
+  it('packs repeater rows into one ordered array on the container data point', async () => {
     const { upsert } = makeClient({
       answers: [
-        { question_key: 'issue_name', value: 'Broken lamp', data_point_slug: 'issue_name', scope: 'unit_category', unit_category_id: 'u1', step_index: 0 },
+        // out of order + multi-field, plus a soft-removed block that must be excluded
         { question_key: 'issue_name', value: 'Cracked tile', data_point_slug: 'issue_name', scope: 'unit_category', unit_category_id: 'u1', step_index: 1 },
+        { question_key: 'issue_type', value: 'Damage', data_point_slug: 'issue_type', scope: 'unit_category', unit_category_id: 'u1', step_index: 1 },
+        { question_key: 'issue_name', value: 'Broken lamp', data_point_slug: 'issue_name', scope: 'unit_category', unit_category_id: 'u1', step_index: 0 },
+        { question_key: 'issue_name', value: { __skipped: true, reason: '__removed' }, data_point_slug: 'issue_name', scope: 'unit_category', unit_category_id: 'u1', step_index: 2 },
       ],
-      dataPoints: [{ id: 'dp2', slug: 'issue_name' }],
+      dataPoints: [{ id: 'dpc', slug: 'fv_issues' }],
+    });
+
+    const res = await POST(submitReq());
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(upsert).toHaveBeenCalledTimes(1);
+    expect(upsert).toHaveBeenCalledWith(
+      {
+        data_point_id: 'dpc',
+        scope_id: 'u1',
+        source: 'staff_first_visit',
+        value: [
+          { name: 'Broken lamp' },
+          { name: 'Cracked tile', type: 'Damage' },
+        ],
+      },
+      { onConflict: 'data_point_id,scope_id,source' },
+    );
+    expect(body.pushed).toBe(1);
+    expect(body.skipped.repeater_rows).toBe(1); // the removed-block sentinel row
+  });
+
+  it('routes building issues to fv_building_issues, not fv_issues', async () => {
+    const { upsert } = makeClient({
+      answers: [
+        { question_key: 'prop_issue_name', value: 'Graffiti', data_point_slug: 'prop_issue_name', scope: 'location', location_id: 'l1', step_index: 0 },
+      ],
+      dataPoints: [{ id: 'dpb', slug: 'fv_building_issues' }, { id: 'dpc', slug: 'fv_issues' }],
+    });
+
+    const res = await POST(submitReq());
+    expect(res.status).toBe(200);
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ data_point_id: 'dpb', scope_id: 'l1', value: [{ name: 'Graffiti' }] }),
+      expect.anything(),
+    );
+  });
+
+  it('still skips-and-reports repeater groups without a container (check-in steps)', async () => {
+    const { upsert } = makeClient({
+      answers: [
+        { question_key: 'fv_step_text', value: 'Enter code', data_point_slug: 'fv_step_text', scope: 'location', location_id: 'l1', step_index: 0 },
+      ],
+      dataPoints: [{ id: 'dps', slug: 'fv_step_text' }],
     });
 
     const res = await POST(submitReq());
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(upsert).not.toHaveBeenCalled();
-    expect(body.pushed).toBe(0);
-    expect(body.skipped.repeater_rows).toBe(2);
+    expect(body.skipped.repeater_rows).toBe(1);
+  });
+
+  it('does not push a skip-sentinel single answer as a value', async () => {
+    const { upsert } = makeClient({
+      answers: [
+        { question_key: 'beds', value: { __skipped: true, reason: 'n/a' }, data_point_slug: 'beds-count', scope: 'unit_category', unit_category_id: 'u1', step_index: -1 },
+      ],
+      dataPoints: [{ id: 'dp1', slug: 'beds-count' }],
+    });
+
+    const res = await POST(submitReq());
+    expect(res.status).toBe(200);
+    expect(upsert).not.toHaveBeenCalled();
   });
 
   it('reports answers whose scope cannot be resolved', async () => {

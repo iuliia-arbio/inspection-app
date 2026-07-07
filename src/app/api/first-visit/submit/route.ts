@@ -4,6 +4,21 @@ import { getHubRouteContext } from '@/lib/firstVisit/hubSupabaseAdmin';
 import { logValueSubmitted } from '@/lib/firstVisit/activityLog';
 import { resolveScopeId, type HubScope } from '@/lib/firstVisit/resolveScope';
 
+// Field-slug prefix → hub container data point the group is packed into.
+// prop_issue_ must precede issue_ (prefix match). Check-in steps (fv_step_*)
+// have no container in the registry and stay out of the push.
+const REPEATER_CONTAINERS: Record<string, string> = {
+  prop_issue_: 'fv_building_issues',
+  issue_: 'fv_issues',
+  item_: 'fv_items',
+};
+
+// Soft-removed repeater blocks / skipped fields store a sentinel object
+// (mirrors isSkipped in ProgressRing.tsx and the findings.csv route).
+function isSkippedValue(v: unknown): boolean {
+  return typeof v === 'object' && v !== null && (v as { __skipped?: unknown }).__skipped === true;
+}
+
 export async function POST(req: Request) {
   const auth = await getHubRouteContext(getHubSupabase());
   if (!auth) return NextResponse.json({ error: 'unauth' }, { status: 401 });
@@ -26,7 +41,8 @@ export async function POST(req: Request) {
 
   const slugs = (answers ?? [])
     .map((a) => a.data_point_slug)
-    .filter((s): s is string => !!s);
+    .filter((s): s is string => !!s)
+    .concat(Object.values(REPEATER_CONTAINERS));
   let dataPoints: { id: string; slug: string }[] = [];
   if (slugs.length > 0) {
     const { data, error } = await supabase
@@ -51,21 +67,41 @@ export async function POST(req: Request) {
   let firstFailure: string | null = null;
   const unknownSlugs = new Set<string>();
 
+  const upsertValue = async (data_point_id: string, scope_id: string, value: unknown) => {
+    const { error: upErr } = await supabase
+      .from('data_point_values')
+      .upsert({
+        data_point_id,
+        scope_id,
+        source: 'staff_first_visit',
+        value,
+      }, { onConflict: 'data_point_id,scope_id,source' });
+    if (upErr) {
+      failed++;
+      firstFailure ??= upErr.message;
+      return;
+    }
+    pushed++;
+    await logValueSubmitted(supabase, {
+      data_point_id,
+      scope_id,
+      source: 'staff_first_visit',
+      value,
+      actor_name: email,
+    });
+  };
+
+  // Repeater rows (step_index >= 0) share one slug per field, but
+  // data_point_values holds a single value per (data_point, scope, source) —
+  // pushing them individually would land ONE arbitrary row's value as "the"
+  // value. Instead the whole group is packed into a single ordered array on
+  // its container data point (fv_issues / fv_building_issues / fv_items),
+  // keyed by (container, scope). Groups without a container (check-in steps)
+  // stay out of the push and are reported.
+  const groups = new Map<string, { dpId: string; scope_id: string; steps: Map<number, Record<string, unknown>> }>();
+
   for (const a of answers ?? []) {
     if (!a.data_point_slug) continue;
-    // Repeater rows (step_index >= 0) share one slug per field, but
-    // data_point_values holds a single value per (data_point, scope, source) —
-    // pushing them would land ONE arbitrary row's value as "the" value.
-    // Skip and report until the hub decides how repeaters are represented.
-    if (typeof a.step_index === 'number' && a.step_index >= 0) {
-      repeaterRows++;
-      continue;
-    }
-    const dp = slugToDp[a.data_point_slug];
-    if (!dp) {
-      unknownSlugs.add(a.data_point_slug);
-      continue;
-    }
     // The answer carries its own scope; resolve the scope_id directly from the
     // answer's own location_id / unit_category_id (deal falls back to the
     // inspection's deal_id). data_points.level is no longer consulted.
@@ -74,33 +110,49 @@ export async function POST(req: Request) {
       location_id: a.location_id ?? undefined,
       unit_category_id: a.unit_category_id ?? undefined,
     });
+
+    if (typeof a.step_index === 'number' && a.step_index >= 0) {
+      const prefix = Object.keys(REPEATER_CONTAINERS).find((p) => a.data_point_slug!.startsWith(p));
+      const containerDp = prefix ? slugToDp[REPEATER_CONTAINERS[prefix]] : undefined;
+      if (!prefix || !containerDp || !scope_id || isSkippedValue(a.value)) {
+        repeaterRows++;
+        continue;
+      }
+      const key = `${containerDp.id}::${scope_id}`;
+      let group = groups.get(key);
+      if (!group) {
+        group = { dpId: containerDp.id, scope_id, steps: new Map() };
+        groups.set(key, group);
+      }
+      let step = group.steps.get(a.step_index);
+      if (!step) {
+        step = {};
+        group.steps.set(a.step_index, step);
+      }
+      step[a.data_point_slug.slice(prefix.length)] = a.value;
+      continue;
+    }
+
+    if (isSkippedValue(a.value)) continue; // deliberate skip — carries no value
+    const dp = slugToDp[a.data_point_slug];
+    if (!dp) {
+      unknownSlugs.add(a.data_point_slug);
+      continue;
+    }
     if (!scope_id) {
       noScope++;
       continue;
     }
+    await upsertValue(dp.id, scope_id, a.value);
+  }
 
-    const { error: upErr } = await supabase
-      .from('data_point_values')
-      .upsert({
-        data_point_id: dp.id,
-        scope_id,
-        source: 'staff_first_visit',
-        value: a.value,
-      }, { onConflict: 'data_point_id,scope_id,source' });
-    if (upErr) {
-      failed++;
-      firstFailure ??= upErr.message;
-      continue;
-    }
-    pushed++;
-
-    await logValueSubmitted(supabase, {
-      data_point_id: dp.id,
-      scope_id,
-      source: 'staff_first_visit',
-      value: a.value,
-      actor_name: email,
-    });
+  for (const group of groups.values()) {
+    const value = [...group.steps.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([, fields]) => fields)
+      .filter((fields) => Object.keys(fields).length > 0);
+    if (value.length === 0) continue;
+    await upsertValue(group.dpId, group.scope_id, value);
   }
 
   const skipped = {
