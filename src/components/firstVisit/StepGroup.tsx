@@ -11,7 +11,7 @@ import { ConditionalFollowUp } from '@/components/firstVisit/ConditionalFollowUp
 import { PerOptionFollowUp } from '@/components/firstVisit/PerOptionFollowUp';
 import { followUpKey, perOptionFollowUpKey } from '@/lib/firstVisit/multiSelect';
 import { isSkipped, type SkippedValue } from '@/components/firstVisit/ProgressRing';
-import { snapshotConfidence } from '@/lib/firstVisit/aiFill';
+import { maxStepIndexForGroup, snapshotConfidence } from '@/lib/firstVisit/aiFill';
 
 // Soft-delete sentinel value used when the inspector removes a block. We
 // don't have a hard-delete API and a missing step_index would cause sibling
@@ -109,7 +109,20 @@ export function StepGroup({
   }, [answers, questions, targetId, areaKey, pendingExtra]);
 
   const addBlock = () => {
-    const next = blocks.length === 0 ? 0 : Math.max(...blocks) + 1;
+    // Allocate past ALL existing step indices for the group — including
+    // soft-removed (tombstoned) blocks, which `blocks` excludes but whose
+    // answer rows (and media, keyed `slug::idx`) still occupy their index.
+    // Reusing a tombstoned index would render the new block's questions as
+    // removed and resurrect the old block's media. Mirrors the append
+    // semantics of maxStepIndexForGroup in aiFill (voice-fill).
+    const maxOccupied = maxStepIndexForGroup(
+      answers,
+      questions.map((q) => q.slug),
+      targetId,
+      areaKey,
+    );
+    const maxVisible = blocks.length === 0 ? -1 : Math.max(...blocks);
+    const next = Math.max(maxOccupied, maxVisible) + 1;
     setPendingExtra((p) => [...p, next]);
   };
 
