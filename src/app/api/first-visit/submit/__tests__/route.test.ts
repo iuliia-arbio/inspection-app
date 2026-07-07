@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('@/lib/firstVisit/hubSupabase', () => ({ getHubSupabase: vi.fn() }));
+vi.mock('@/lib/firstVisit/hubSupabaseServer', () => ({ getHubUserClient: vi.fn() }));
 vi.mock('@/lib/firstVisit/activityLog', () => ({ logValueSubmitted: vi.fn() }));
 
 import { POST } from '../route';
-import { getHubSupabase } from '@/lib/firstVisit/hubSupabase';
+import { getHubUserClient } from '@/lib/firstVisit/hubSupabaseServer';
 import { logValueSubmitted } from '@/lib/firstVisit/activityLog';
 
 const inspectionRow = { id: 'i1', deal_id: 'd1' };
@@ -41,7 +41,7 @@ function makeClient(opts: {
     from,
     auth: { getUser: () => ({ data: { user: { email: 'a@arbio.com' } } }) },
   };
-  (getHubSupabase as never as ReturnType<typeof vi.fn>).mockReturnValue(client);
+  (getHubUserClient as never as ReturnType<typeof vi.fn>).mockResolvedValue(client);
   return { upsert, inspectionUpdate, dataPointsEq };
 }
 

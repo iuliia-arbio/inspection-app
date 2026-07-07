@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getHubSupabase } from '@/lib/firstVisit/hubSupabase';
+import { getHubUserClient } from '@/lib/firstVisit/hubSupabaseServer';
 import { getHubRouteContext } from '@/lib/firstVisit/hubSupabaseAdmin';
 
 export async function POST(req: Request) {
-  const auth = await getHubRouteContext(getHubSupabase());
+  const auth = await getHubRouteContext(await getHubUserClient());
   if (!auth) return NextResponse.json({ error: 'unauth' }, { status: 401 });
   const { supabase } = auth;
 
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const auth = await getHubRouteContext(getHubSupabase());
+  const auth = await getHubRouteContext(await getHubUserClient());
   if (!auth) return NextResponse.json({ error: 'unauth' }, { status: 401 });
   const { supabase } = auth;
 
