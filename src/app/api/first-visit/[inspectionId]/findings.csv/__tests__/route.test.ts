@@ -57,10 +57,15 @@ describe('parseFindingMediaStep', () => {
     expect(parseFindingMediaStep('issue_media::3')).toBe(3);
     expect(parseFindingMediaStep('issue_media::0')).toBe(0);
   });
+  it('extracts step index from the building log prop_issue_media::N', () => {
+    expect(parseFindingMediaStep('prop_issue_media::3')).toBe(3);
+    expect(parseFindingMediaStep('prop_issue_media::0')).toBe(0);
+  });
   it('returns null for non-matching keys', () => {
     expect(parseFindingMediaStep('issue_media')).toBeNull();
     expect(parseFindingMediaStep('issue_name')).toBeNull();
     expect(parseFindingMediaStep('issue_media::x')).toBeNull();
+    expect(parseFindingMediaStep('prop_issue_media')).toBeNull();
   });
 });
 
@@ -84,8 +89,14 @@ describe('GET /api/first-visit/[inspectionId]/findings.csv', () => {
       params: makeParams('i1'),
     });
     expect(res.headers.get('Content-Type')).toBe('text/csv; charset=utf-8');
-    const body = await res.text();
+    // Check raw bytes: res.text() strips a leading BOM per the UTF-8 decode
+    // spec, but the downloaded file must carry it (Excel needs it for umlauts),
+    // exactly once so it can't leak into the first cell.
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    const body = new TextDecoder().decode(bytes); // default decode strips the leading BOM
     expect(body.startsWith('unit_identifier,list_type,item_name')).toBe(true);
+    expect(body.includes('\uFEFF')).toBe(false);
   });
 
   it('uses "Building / common" for a location-scoped finding', async () => {
@@ -106,6 +117,37 @@ describe('GET /api/first-visit/[inspectionId]/findings.csv', () => {
     });
     const body = await res.text();
     expect(body).toContain('Building / common');
+  });
+
+  it('includes building-log issues (prop_issue_*) mapped to canonical columns', async () => {
+    const createSignedUrl = vi
+      .fn()
+      .mockResolvedValue({ data: { signedUrl: 'https://signed/lobby' }, error: null });
+    asMock(getHubSupabase).mockReturnValue(
+      makeClient({
+        answers: [
+          { target_id: 'loc1', scope: 'location', question_key: 'prop_issue_name', step_index: 0, value: 'Broken lobby light' },
+          { target_id: 'loc1', scope: 'location', question_key: 'prop_issue_area', step_index: 0, value: 'Lobby' },
+          { target_id: 'loc1', scope: 'location', question_key: 'prop_issue_resolution', step_index: 0, value: 'Fix' },
+        ],
+        targets: [{ id: 'loc1', label: 'Main building', kind: 'property' }],
+        media: [
+          { target_id: 'loc1', question_key: 'prop_issue_media::0', storage_path: 'i1/lobby.jpg', kind: 'photo' },
+        ],
+        createSignedUrl,
+      }),
+    );
+    const res = await GET(new Request('http://x/findings.csv'), {
+      params: makeParams('i1'),
+    });
+    const body = await res.text();
+    // Building issues are labelled "Building / common" and prop_issue_area
+    // lands in the location_in_unit column.
+    expect(body).toContain('Building / common');
+    expect(body).toContain('Broken lobby light');
+    expect(body).toContain('Lobby');
+    expect(body).toContain('https://signed/lobby');
+    expect(createSignedUrl).toHaveBeenCalledWith('i1/lobby.jpg', 60 * 60 * 24 * 7);
   });
 
   it('signs each media row once and includes the URL in the row', async () => {
@@ -133,5 +175,83 @@ describe('GET /api/first-visit/[inspectionId]/findings.csv', () => {
     expect(createSignedUrl).toHaveBeenCalledWith('i1/abc.jpg', 60 * 60 * 24 * 7);
     expect(body).toContain('https://signed/url1');
     expect(body).toContain('Apt 2');
+  });
+
+  it('renders an individually skipped field as an empty cell, not [object Object]', async () => {
+    const createSignedUrl = vi.fn();
+    asMock(getHubSupabase).mockReturnValue(
+      makeClient({
+        answers: [
+          { target_id: 't1', scope: 'unit_category', question_key: 'issue_name', step_index: 0, value: 'Chair' },
+          { target_id: 't1', scope: 'unit_category', question_key: 'issue_resolution', step_index: 0, value: 'Replace' },
+          // SkipAffordance sentinel — skipped with a reason.
+          { target_id: 't1', scope: 'unit_category', question_key: 'issue_notes', step_index: 0, value: { __skipped: true, reason: 'Owner absent' } },
+        ],
+        targets: [{ id: 't1', label: 'Apt 2', kind: 'unit' }],
+        media: [],
+        createSignedUrl,
+      }),
+    );
+    const res = await GET(new Request('http://x/findings.csv'), {
+      params: makeParams('i1'),
+    });
+    const body = await res.text();
+    expect(body).toContain('Chair');
+    expect(body).not.toContain('[object Object]');
+    expect(body).not.toContain('Owner absent');
+  });
+
+  it('emits no row for a removed repeater block (all fields carry the __removed sentinel)', async () => {
+    const createSignedUrl = vi.fn();
+    const removed = { __skipped: true, reason: '__removed' };
+    asMock(getHubSupabase).mockReturnValue(
+      makeClient({
+        answers: [
+          // Step 0 was removed via StepGroup.removeBlock — every answered
+          // question of the block holds the sentinel.
+          { target_id: 't1', scope: 'unit_category', question_key: 'issue_name', step_index: 0, value: removed },
+          { target_id: 't1', scope: 'unit_category', question_key: 'issue_type', step_index: 0, value: removed },
+          { target_id: 't1', scope: 'unit_category', question_key: 'issue_resolution', step_index: 0, value: removed },
+          // Step 1 is a live issue and must survive.
+          { target_id: 't1', scope: 'unit_category', question_key: 'issue_name', step_index: 1, value: 'Lamp' },
+          { target_id: 't1', scope: 'unit_category', question_key: 'issue_resolution', step_index: 1, value: 'Fix' },
+        ],
+        targets: [{ id: 't1', label: 'Apt 2', kind: 'unit' }],
+        media: [],
+        createSignedUrl,
+      }),
+    );
+    const res = await GET(new Request('http://x/findings.csv'), {
+      params: makeParams('i1'),
+    });
+    const body = await res.text();
+    const lines = body.split('\n');
+    expect(lines).toHaveLength(2); // header + the surviving issue only
+    expect(body).toContain('Lamp');
+    expect(body).not.toContain('[object Object]');
+  });
+
+  it('ignores answers with the step_index -1 "not a repeater row" sentinel', async () => {
+    const createSignedUrl = vi.fn();
+    asMock(getHubSupabase).mockReturnValue(
+      makeClient({
+        answers: [
+          { target_id: 't1', scope: 'unit_category', question_key: 'issue_name', step_index: -1, value: 'Stray' },
+          { target_id: 't1', scope: 'unit_category', question_key: 'issue_name', step_index: 0, value: 'Chair' },
+          { target_id: 't1', scope: 'unit_category', question_key: 'issue_resolution', step_index: 0, value: 'Replace' },
+        ],
+        targets: [{ id: 't1', label: 'Apt 2', kind: 'unit' }],
+        media: [],
+        createSignedUrl,
+      }),
+    );
+    const res = await GET(new Request('http://x/findings.csv'), {
+      params: makeParams('i1'),
+    });
+    const body = await res.text();
+    const lines = body.split('\n');
+    expect(lines).toHaveLength(2); // header + the real issue row
+    expect(body).toContain('Chair');
+    expect(body).not.toContain('Stray');
   });
 });

@@ -11,6 +11,24 @@ const BUCKETS: Record<string, string> = {
 
 // The Issue-log field slugs (V1 redesign — formerly finding_*), stored on
 // first_visit_answers with question_key = '<slug>' and a separate step_index.
+// The CSV merges TWO issue logs into one sheet: the unit-level log (issue_*,
+// phase 10) and the property/building-level log (prop_issue_*, phase 16). The
+// building log mirrors the unit log field-for-field, so we map its slugs back
+// to the canonical issue_* keys the row builder reads — prop_issue_area is the
+// building counterpart of issue_location ("Location in unit"). Building issues
+// carry scope 'location', which the row builder already labels "Building /
+// common" via the unit_identifier branch below.
+const PROP_FIELD_TO_CANONICAL: Record<string, string> = {
+  prop_issue_name: 'issue_name',
+  prop_issue_type: 'issue_type',
+  prop_issue_area: 'issue_location',
+  prop_issue_resolution: 'issue_resolution',
+  prop_issue_quantity: 'issue_quantity',
+  prop_issue_cost_estimate_eur: 'issue_cost_estimate_eur',
+  prop_issue_urgency: 'issue_urgency',
+  prop_issue_notes: 'issue_notes',
+};
+
 const FINDING_FIELD_SLUGS = [
   'issue_name',
   'issue_type',
@@ -20,13 +38,15 @@ const FINDING_FIELD_SLUGS = [
   'issue_cost_estimate_eur',
   'issue_urgency',
   'issue_notes',
+  ...Object.keys(PROP_FIELD_TO_CANONICAL),
 ] as const;
 
-// Issue media is stored with question_key = `issue_media::<stepIndex>`
-// (see StepGroup.tsx). Pull the step index back out so we can pair media with
-// the issue fields that share the same (target_id, step_index).
+// Issue media is stored with question_key = `issue_media::<stepIndex>` (unit
+// log) or `prop_issue_media::<stepIndex>` (building log) — see StepGroup.tsx.
+// Pull the step index back out so we can pair media with the issue fields that
+// share the same (target_id, step_index).
 export function parseFindingMediaStep(questionKey: string): number | null {
-  const m = /^issue_media::(\d+)$/.exec(questionKey);
+  const m = /^(?:prop_)?issue_media::(\d+)$/.exec(questionKey);
   if (!m) return null;
   const n = Number(m[1]);
   return Number.isFinite(n) ? n : null;
@@ -44,6 +64,26 @@ function toStringOrEmpty(v: unknown): string {
 
 function toStringOrNull(v: unknown): string | null {
   return v == null || v === '' ? null : String(v);
+}
+
+// Skip sentinels sync to the hub like any answer value: SkipAffordance writes
+// { __skipped: true, reason } for an individually skipped field, and
+// StepGroup's removeBlock stamps { __skipped: true, reason: '__removed' } on
+// every answered question of a removed repeater block. Either way the value
+// carries no data — render it as an empty cell, never `[object Object]`.
+// (Mirrors isSkipped in src/components/firstVisit/ProgressRing.tsx, kept local
+// so the API route does not import a client component.)
+function isSkippedValue(v: unknown): boolean {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    (v as { __skipped?: unknown }).__skipped === true
+  );
+}
+
+// True when a field value would render as a non-empty cell.
+function hasContent(v: unknown): boolean {
+  return v != null && String(v).trim() !== '';
 }
 
 export async function GET(
@@ -92,13 +132,18 @@ export async function GET(
 
   for (const a of answers ?? []) {
     const step = typeof a.step_index === 'number' ? a.step_index : null;
+    // step_index < 0 is the server-side "not a repeater row" sentinel — such
+    // answers are not issue-log entries, so keep them out of row grouping.
+    if (step != null && step < 0) continue;
     const k = keyOf(a.target_id, step);
     let acc = findings.get(k);
     if (!acc) {
       acc = { target_id: a.target_id, scope: a.scope ?? null, step_index: step, fields: {} };
       findings.set(k, acc);
     }
-    acc.fields[a.question_key] = a.value;
+    const canonicalKey = PROP_FIELD_TO_CANONICAL[a.question_key] ?? a.question_key;
+    // A skipped/removed field carries no data — treat as empty.
+    acc.fields[canonicalKey] = isSkippedValue(a.value) ? null : a.value;
   }
 
   // Index media by (target_id, parsed step index).
@@ -115,6 +160,9 @@ export async function GET(
   const rows: FindingRow[] = [];
   for (const [k, acc] of findings) {
     const f = acc.fields;
+    // A removed repeater block leaves every field skipped (nulled above) — if
+    // no field carries content, the issue was removed: emit no row at all.
+    if (!Object.values(f).some(hasContent)) continue;
     const target = targetById.get(acc.target_id);
     const isBuilding = acc.scope === 'location' || target?.kind === 'property';
     const unit_identifier = isBuilding ? 'Building / common' : target?.label ?? '';

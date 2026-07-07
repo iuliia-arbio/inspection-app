@@ -26,7 +26,8 @@ export async function exportInspection(inspectionId: string): Promise<Blob> {
     a.was_prefilled, a.was_accepted_as_is,
     a.hub_suggestion_snapshot ?? '', a.created_at,
   ].map(csvCell).join(','));
-  zip.file('answers.csv', [header, ...rows].join('\n'));
+  // UTF-8 BOM so Excel on Windows opens the CSV as UTF-8 (umlauts intact).
+  zip.file('answers.csv', '\uFEFF' + [header, ...rows].join('\n'));
 
   // Manifest
   zip.file('manifest.json', JSON.stringify({ inspection, media_count: media.length }, null, 2));

@@ -21,11 +21,17 @@ function cell(v: unknown): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+// UTF-8 BOM so Excel on Windows detects the encoding — without it, BOM-less
+// UTF-8 opens as Windows-1252 and umlauts garble (Küche → KÃ¼che). The BOM
+// sits before the header, outside any quoted cell; the route serves the
+// string as-is so it is never duplicated.
+const BOM = '\uFEFF';
+
 export function buildFindingsCsv(rows: FindingRow[]): string {
   const body = rows.map((r) => [
     r.unit_identifier, listTypeFor(r.resolution), r.item_name, r.category,
     r.location_in_unit, r.resolution, r.quantity, r.cost_estimate_eur,
     r.urgency, r.notes, r.media_links.join(';'),
   ].map(cell).join(','));
-  return [HEADER.join(','), ...body].join('\n');
+  return BOM + [HEADER.join(','), ...body].join('\n');
 }
