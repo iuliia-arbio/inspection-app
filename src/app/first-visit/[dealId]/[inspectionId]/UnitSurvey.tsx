@@ -154,6 +154,9 @@ export function UnitSurvey({
       area_key: areaKey,
       step_index: stepIndex,
       value: next.value,
+      // Preserve any note attached via setNotes — this row literal replaces the
+      // whole Dexie object, so omitting notes would silently destroy it.
+      notes: existing?.notes,
       data_point_slug: questionKey,
       hub_suggestion_snapshot: existing?.hub_suggestion_snapshot,
       was_prefilled: !!existing?.was_prefilled,
