@@ -9,6 +9,7 @@ import { type HubSnapshot } from '@/lib/firstVisit/snapshot';
 import { SyncBadge } from '@/components/firstVisit/SyncBadge';
 import { ExportMenu } from '@/components/firstVisit/ExportMenu';
 import { ProgressRing } from '@/components/firstVisit/ProgressRing';
+import { SwipeToDeleteRow } from '@/components/firstVisit/SwipeToDeleteRow';
 import { track } from '@/lib/firstVisit/analytics';
 import { UnitSurvey, type SurveyTarget } from './UnitSurvey';
 import type { HubScope } from '@/lib/firstVisit/resolveScope';
@@ -113,6 +114,7 @@ export default function VisitNavigator({
   const [selected, setSelected] = useState<Selection | null>(null);
   const [adding, setAdding] = useState<null | { kind: 'property' } | { kind: 'unit'; property: LocalTarget }>(null);
   const [renamingUnitId, setRenamingUnitId] = useState<string | null>(null);
+  const [renamingPropertyId, setRenamingPropertyId] = useState<string | null>(null);
   // Submit flow state: a confirmation dialog that lists what's still open, and
   // a terminal success state so the inspector knows the visit actually went in.
   const [submitState, setSubmitState] = useState<'idle' | 'confirming' | 'submitted'>(
@@ -278,6 +280,17 @@ export default function VisitNavigator({
     track('unit_renamed', { from: u.label, to: trimmed });
     await persistTarget({ ...u, label: trimmed });
     setRenamingUnitId(null);
+  };
+
+  const renameProperty = async (p: LocalTarget, nextLabel: string) => {
+    const trimmed = nextLabel.trim();
+    if (!trimmed || trimmed === p.label) {
+      setRenamingPropertyId(null);
+      return;
+    }
+    track('property_renamed', { from: p.label, to: trimmed });
+    await persistTarget({ ...p, label: trimmed });
+    setRenamingPropertyId(null);
   };
 
   const addPropertyFromHub = async (loc: HubLocation) => {
@@ -560,36 +573,17 @@ export default function VisitNavigator({
           {properties.map((p) => {
             const propProgress = progressFor(p.id, 'location');
             return (
-              <div key={p.id} className="rounded-lg border border-gray-200">
-                <div className="flex w-full items-center gap-1 p-3">
-                  <button
-                    type="button"
-                    onClick={() => setSelected({ kind: 'property', target: p })}
-                    className="-m-1 flex flex-1 items-center gap-2 rounded-md p-1 text-left hover:bg-gray-50"
-                  >
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">{p.label}</div>
-                      <div className="text-xs text-gray-500">Tap to open property questions</div>
-                    </div>
-                    {propProgress.total > 0 ? (
-                      <ProgressRing
-                        done={propProgress.done}
-                        total={propProgress.total}
-                        size={32}
-                      />
-                    ) : null}
-                    <span aria-hidden className="text-gray-400">›</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => deleteProperty(p)}
-                    title="Delete property"
-                    aria-label={`Delete ${p.label}`}
-                    className="flex h-10 w-10 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600"
-                  >
-                    🗑
-                  </button>
-                </div>
+              <PropertyRow
+                key={p.id}
+                property={p}
+                isRenaming={renamingPropertyId === p.id}
+                progress={propProgress}
+                onOpen={() => setSelected({ kind: 'property', target: p })}
+                onStartRename={() => setRenamingPropertyId(p.id)}
+                onCancelRename={() => setRenamingPropertyId(null)}
+                onSaveRename={(label) => renameProperty(p, label)}
+                onDelete={() => deleteProperty(p)}
+              >
                 <div className="border-t border-gray-100 px-3 py-2">
                   <div className="flex flex-col gap-1.5">
                     {unitsOf(p.id).map((u) => {
@@ -625,7 +619,7 @@ export default function VisitNavigator({
                     onAddOnSite={(label) => addUnitOnSite(p, label)}
                   />
                 </div>
-              </div>
+              </PropertyRow>
             );
           })}
         </div>
@@ -755,6 +749,103 @@ function SubmitDialog({
   );
 }
 
+function PropertyRow({
+  property,
+  isRenaming,
+  progress,
+  onOpen,
+  onStartRename,
+  onCancelRename,
+  onSaveRename,
+  onDelete,
+  children,
+}: {
+  property: LocalTarget;
+  isRenaming: boolean;
+  progress: ScopeProgress;
+  onOpen: () => void;
+  onStartRename: () => void;
+  onCancelRename: () => void;
+  onSaveRename: (label: string) => void;
+  onDelete: () => void;
+  children?: React.ReactNode;
+}) {
+  const [draft, setDraft] = useState(property.label ?? '');
+
+  useEffect(() => {
+    if (isRenaming) setDraft(property.label ?? '');
+  }, [isRenaming, property.label]);
+
+  return (
+    <div className="rounded-lg border border-gray-200">
+      {isRenaming ? (
+        <div className="flex items-center gap-2 p-3">
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') onSaveRename(draft);
+              if (e.key === 'Escape') onCancelRename();
+            }}
+            className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
+          />
+          <button
+            type="button"
+            onClick={() => onSaveRename(draft)}
+            className="rounded bg-black px-2 py-1 text-xs text-white"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={onCancelRename}
+            className="text-xs text-gray-400 hover:text-gray-700"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <SwipeToDeleteRow onDelete={onDelete}>
+          <div className="flex w-full items-center gap-1 p-3">
+            {property.created_on_site ? (
+              <button
+                type="button"
+                onClick={onStartRename}
+                title="Tap to rename"
+                className="flex-1 text-left"
+              >
+                <div className="text-sm font-medium">{property.label}</div>
+                <div className="text-xs text-gray-500">Tap to rename</div>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onOpen}
+                className="flex-1 text-left"
+              >
+                <div className="text-sm font-medium">{property.label}</div>
+                <div className="text-xs text-gray-500">Tap to open property questions</div>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onOpen}
+              className="flex items-center gap-2 p-1"
+            >
+              {progress.total > 0 ? (
+                <ProgressRing done={progress.done} total={progress.total} size={32} />
+              ) : null}
+              <span aria-hidden className="text-gray-400">›</span>
+            </button>
+          </div>
+        </SwipeToDeleteRow>
+      )}
+      {children}
+    </div>
+  );
+}
+
 function UnitRow({
   unit,
   isRenaming,
@@ -814,37 +905,38 @@ function UnitRow({
   }
 
   return (
-    <div className="flex items-center gap-1 rounded border border-gray-100 hover:bg-gray-50">
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex flex-1 items-center gap-2 px-2 py-1.5 text-left text-sm"
-      >
-        <span className="flex-1">{unit.label}</span>
-        {progress.total > 0 ? (
-          <ProgressRing done={progress.done} total={progress.total} size={24} stroke={2} />
-        ) : null}
-        <span aria-hidden className="text-gray-400">›</span>
-      </button>
-      <button
-        type="button"
-        onClick={onStartRename}
-        title="Rename unit"
-        aria-label={`Rename ${unit.label}`}
-        className="flex h-10 w-10 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-      >
-        ✎
-      </button>
-      <button
-        type="button"
-        onClick={onDelete}
-        title="Delete unit"
-        aria-label={`Delete ${unit.label}`}
-        className="flex h-10 w-10 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600"
-      >
-        🗑
-      </button>
-    </div>
+    <SwipeToDeleteRow onDelete={onDelete}>
+      <div className="flex items-center gap-1 rounded border border-gray-100 hover:bg-gray-50">
+        {unit.created_on_site ? (
+          <button
+            type="button"
+            onClick={onStartRename}
+            title="Tap to rename"
+            className="flex-1 truncate px-2 py-1.5 text-left text-sm"
+          >
+            {unit.label}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onOpen}
+            className="flex-1 truncate px-2 py-1.5 text-left text-sm"
+          >
+            {unit.label}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex items-center gap-2 px-2 py-1.5"
+        >
+          {progress.total > 0 ? (
+            <ProgressRing done={progress.done} total={progress.total} size={24} stroke={2} />
+          ) : null}
+          <span aria-hidden className="text-gray-400">›</span>
+        </button>
+      </div>
+    </SwipeToDeleteRow>
   );
 }
 
