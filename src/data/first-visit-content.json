@@ -462,7 +462,6 @@
           "options": [
             "Main Gate",
             "Building Door",
-            "Apartment Door",
             "Other"
           ],
           "required": true,
@@ -576,6 +575,17 @@
           "type": "text",
           "options": [],
           "required": false,
+          "phase_id": "4",
+          "phase_label": "Building access & check-in"
+        },
+        {
+          "slug": "fv_step_photo",
+          "label": "Photo of this check-in step",
+          "description": null,
+          "scope": "location",
+          "type": "file",
+          "options": [],
+          "required": true,
           "phase_id": "4",
           "phase_label": "Building access & check-in"
         },
