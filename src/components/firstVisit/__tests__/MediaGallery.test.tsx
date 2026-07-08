@@ -103,4 +103,40 @@ describe('MediaGallery', () => {
 
     await waitFor(() => expect(screen.getByText(/1 file/i)).toBeInTheDocument());
   });
+
+  describe('upload status indicator', () => {
+    it('shows an uploading state before uploaded_at is set', async () => {
+      await localDb.media.put(makeMedia({ id: 'm1', kind: 'photo' }));
+
+      render(
+        <MediaGallery
+          inspectionId={INSPECTION}
+          targetId={TARGET}
+          areaKey={AREA}
+          questionKey={QUESTION}
+        />,
+      );
+
+      expect(await screen.findByLabelText(/uploading/i)).toBeInTheDocument();
+      expect(screen.queryByLabelText(/^uploaded$/i)).not.toBeInTheDocument();
+    });
+
+    it('shows an uploaded checkmark once uploaded_at is set', async () => {
+      await localDb.media.put(
+        makeMedia({ id: 'm2', kind: 'photo', uploaded_at: new Date().toISOString() }),
+      );
+
+      render(
+        <MediaGallery
+          inspectionId={INSPECTION}
+          targetId={TARGET}
+          areaKey={AREA}
+          questionKey={QUESTION}
+        />,
+      );
+
+      expect(await screen.findByLabelText(/^uploaded$/i)).toBeInTheDocument();
+      expect(screen.queryByLabelText(/uploading/i)).not.toBeInTheDocument();
+    });
+  });
 });
