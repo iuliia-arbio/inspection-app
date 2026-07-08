@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import { localDb } from './db';
 import { track } from './analytics';
+import { ALL_QUESTIONS } from './questions';
 
 function csvCell(v: unknown): string {
   if (v == null) return '';
@@ -9,28 +10,35 @@ function csvCell(v: unknown): string {
   return s;
 }
 
+function displayValue(v: unknown): unknown {
+  if (v === true) return 'Yes';
+  if (v === false) return 'No';
+  return v;
+}
+
+const QUESTION_LABELS = new Map(ALL_QUESTIONS.map((q) => [q.slug, q.label]));
+
 export async function exportInspection(inspectionId: string): Promise<Blob> {
   const zip = new JSZip();
 
-  const inspection = await localDb.inspections.get(inspectionId);
   const answers = await localDb.answers.where('inspection_id').equals(inspectionId).toArray();
   const media = await localDb.media.where('inspection_id').equals(inspectionId).toArray();
 
   // CSV
   const header = [
-    'question_key','area_key','value','notes',
+    'question_key','question_text','area_key','value','notes',
     'was_prefilled','was_accepted_as_is','hub_suggestion_snapshot','captured_at',
   ].join(',');
   const rows = answers.map((a) => [
-    a.question_key, a.area_key, a.value, a.notes ?? '',
+    a.question_key,
+    QUESTION_LABELS.get(a.question_key) ?? '',
+    a.area_key,
+    displayValue(a.value),
+    a.notes ?? '',
     a.was_prefilled, a.was_accepted_as_is,
     a.hub_suggestion_snapshot ?? '', a.created_at,
   ].map(csvCell).join(','));
-  // UTF-8 BOM so Excel on Windows opens the CSV as UTF-8 (umlauts intact).
-  zip.file('answers.csv', '\uFEFF' + [header, ...rows].join('\n'));
-
-  // Manifest
-  zip.file('manifest.json', JSON.stringify({ inspection, media_count: media.length }, null, 2));
+  zip.file('answers.csv', '﻿' + [header, ...rows].join('\n'));
 
   // Media
   for (const m of media) {
