@@ -54,8 +54,7 @@ export const PHASES = [
     { slug: 'fv_video_parking_access', label: 'Parking access video', type: 'file', mode: 'observe', required: false,
       visible_when: { question: 'fv_parking_actual_type', not_in: ['None'] } },
     { slug: 'fv_parking_bike_available', label: 'Bike parking available?', type: 'boolean', options: YESNO, required: true },
-    { slug: 'fv_parking_nearby_options', label: 'Nearby parking options', type: 'text', required: false,
-      description: 'AI-generated from the address; PM validates/regenerates.' },
+    { slug: 'fv_parking_nearby_options', label: 'Nearby parking options', type: 'text', required: false },
     { slug: 'fv_building_state', label: 'Building state', type: 'select',
       options: ['Excellent', 'Good', 'Acceptable', 'Needs attention', 'Poor'], required: true,
       description: 'What to look at: facade condition; entrance/lobby cleanliness; visible damage or wear; lighting; signs of disrepair.' },
@@ -65,7 +64,9 @@ export const PHASES = [
     { slug: 'fv_building_construction_nearby', label: 'Construction site/disruption nearby?', type: 'boolean',
       options: ['No', 'Yes'], required: true },
     { slug: 'fv_building_amenities_verify', label: 'Building amenities', type: 'select', multi_select: true, allow_custom_options: true,
-      options: ['Aufzug', 'Gemeinschafts Balkon/Terrasse', 'Gemeinschaftsgarten', 'Schwimmbad', 'Sauna', 'Fitnessraum', 'Konferenzräume', 'Reception/Concierge', 'None'], required: true },
+      options: ['Elevator', 'Shared balcony/terrace', 'Shared garden', 'Pool', 'Sauna', 'Gym', 'Conference rooms', 'Reception/Concierge', 'None'], required: true },
+    { slug: 'fv_common_area', label: 'Common areas / building facilities', type: 'select', multi_select: true, allow_custom_options: true,
+      options: ['Lobby', 'Rooftop', 'Courtyard', 'SmokingArea', 'Storage', 'Shared kitchen', 'Shared garden', 'Other', 'None'], required: false },
     { slug: 'fv_accessibility_step_free_entry', label: 'Step-free entry to the building?', type: 'select',
       options: ['Yes', 'No', 'Partial'], required: false },
     { slug: 'fv_accessibility_ramps', label: 'Ramps / accessibility aids present?', type: 'text', required: false },
@@ -160,8 +161,6 @@ export const PHASES = [
       visible_when: { question: 'fv_fire_safety_present', equals: true } },
     { slug: 'fv_photo_fire_safety', label: 'Fire safety photos (extinguisher, exits, detectors)', type: 'file', mode: 'observe', required: false,
       visible_when: { question: 'fv_fire_safety_present', equals: true } },
-    { slug: 'fv_common_area', label: 'Common areas / building facilities', type: 'select', multi_select: true, allow_custom_options: true,
-      options: ['Lobby', 'Rooftop', 'Courtyard', 'SmokingArea', 'Storage', 'Shared kitchen', 'Shared garden', 'Other', 'None'], required: false },
   ]},
 
   // ── 6 · Cleaning & laundry (location) ────────────────────────────────────
@@ -178,26 +177,8 @@ export const PHASES = [
       options: ['Early check-in', 'Late check-out', 'Express cleaning', 'Baby bed', 'High chair', 'Parking', 'Breakfast', 'Airport transfer', 'None'], required: true },
   ]},
 
-  // ── 7 · WiFi (location) ──────────────────────────────────────────────────
-  { id: '7', label: 'WiFi', scope: 'location', questions: [
-    { slug: 'fv_wifi_present', label: 'Wi-Fi available?', type: 'boolean', options: YESNO, required: true,
-      description: 'Gate: when "No", WiFi sub-questions collapse.' },
-    { slug: 'fv_wifi_ssid', label: 'WiFi network name (SSID)', type: 'text', required: false,
-      visible_when: { question: 'fv_wifi_present', equals: true } },
-    { slug: 'fv_wifi_password', label: 'WiFi password', type: 'text', required: false,
-      visible_when: { question: 'fv_wifi_present', equals: true } },
-    { slug: 'fv_wifi_download_speed_mbps', label: 'WiFi download speed (Mbps)', type: 'number', required: false,
-      visible_when: { question: 'fv_wifi_present', equals: true } },
-    { slug: 'fv_wifi_upload_speed_mbps', label: 'WiFi upload speed (Mbps)', type: 'number', required: false,
-      visible_when: { question: 'fv_wifi_present', equals: true } },
-    { slug: 'fv_wifi_router_location', label: 'WiFi router physical location', type: 'text', required: false,
-      visible_when: { question: 'fv_wifi_present', equals: true } },
-    { slug: 'fv_wifi_guest_router_access', label: 'Guest access to router?', type: 'boolean', options: YESNO, required: false,
-      visible_when: { question: 'fv_wifi_present', equals: true } },
-  ]},
-
   // ── 16 · Building condition & issues (location) ──────────────────────────
-  // Property-level mirror of the unit issue log (phase 10). Distinct
+  // Property-level mirror of the unit issue log (phase 17). Distinct
   // `prop_issue_*` slugs + group_id 'prop_issue' so the hub can tell a
   // building/common-area defect apart from a unit defect. Placed here (after
   // the location phases, before the unit phases) so it renders within the
@@ -235,12 +216,6 @@ export const PHASES = [
     { slug: 'fv_unit_location_in_building', label: 'Unit number / location (e.g. links · rechts · Mitte)', type: 'text', required: false },
     { slug: 'fv_unit_type_check', label: 'Unit type', type: 'select',
       options: ['Apartment', 'Studio', 'Loft', 'Maisonette', 'Other'], required: true },
-    // Kept with the identity block (after unit type) so the p8_identity voice
-    // prompt's fields are contiguous below the prompt — no unrelated questions
-    // wedged between the prompt and the fields it fills.
-    { slug: 'fv_apartment_category', label: 'Apartment category', type: 'select',
-      options: ['Premium', 'Standard', 'Midscale', 'Below standard'], required: true,
-      description: 'Tiers anchored on finish quality, furnishing completeness, size and amenities — validate definitions with GX.' },
     { slug: 'fv_unit_balcony_present', label: 'Is there a balcony?', type: 'boolean', options: YESNO, required: true,
       description: 'Gate: when "No", balcony count collapses.' },
     { slug: 'fv_unit_balconies_count', label: 'Number of balconies', type: 'number', required: false,
@@ -267,8 +242,26 @@ export const PHASES = [
     { slug: 'fv_capacity_comments', label: 'Capacity comments', type: 'text', required: false },
   ]},
 
-  // ── 10 · Unit condition & issues (unit_category) ─────────────────────────
-  { id: '10', label: 'Unit condition & issues', scope: 'unit_category', questions: [
+  // ── 7 · WiFi (unit_category) ──────────────────────────────────────────────
+  { id: '7', label: 'WiFi', scope: 'unit_category', questions: [
+    { slug: 'fv_wifi_present', label: 'Wi-Fi available?', type: 'boolean', options: YESNO, required: true,
+      description: 'Gate: when "No", WiFi sub-questions collapse.' },
+    { slug: 'fv_wifi_ssid', label: 'WiFi network name (SSID)', type: 'text', required: false,
+      visible_when: { question: 'fv_wifi_present', equals: true } },
+    { slug: 'fv_wifi_password', label: 'WiFi password', type: 'text', required: false,
+      visible_when: { question: 'fv_wifi_present', equals: true } },
+    { slug: 'fv_wifi_download_speed_mbps', label: 'WiFi download speed (Mbps)', type: 'number', required: false,
+      visible_when: { question: 'fv_wifi_present', equals: true } },
+    { slug: 'fv_wifi_upload_speed_mbps', label: 'WiFi upload speed (Mbps)', type: 'number', required: false,
+      visible_when: { question: 'fv_wifi_present', equals: true } },
+    { slug: 'fv_wifi_router_location', label: 'WiFi router physical location', type: 'text', required: false,
+      visible_when: { question: 'fv_wifi_present', equals: true } },
+    { slug: 'fv_wifi_guest_router_access', label: 'Guest access to router?', type: 'boolean', options: YESNO, required: false,
+      visible_when: { question: 'fv_wifi_present', equals: true } },
+  ]},
+
+  // ── 11 · Unit condition, appliances & amenities (unit_category) ──────────
+  { id: '11', label: 'Unit condition, appliances & amenities', scope: 'unit_category', questions: [
     { slug: 'fv_furniture_status', label: 'Furnished to Arbio standard?', type: 'select',
       options: ['Yes fully', 'Mostly', 'No significant', 'No overhaul'], required: true,
       description: 'Arbio standard: required furniture set (bed, seating, dining, storage), condition/quality, completeness vs the checklist — validate with GX.' },
@@ -278,34 +271,6 @@ export const PHASES = [
     { slug: 'fv_bathroom_condition', label: 'Bathroom condition', type: 'select',
       options: ['Excellent', 'Good', 'Needs minor', 'Needs renovation'], required: true,
       description: 'What excellent means: cleanliness; fixtures working; sealing/grout intact; ventilation; no mold or leaks.' },
-    { slug: 'fv_issues_found', label: 'Any issues found in the unit?', type: 'boolean', options: YESNO, required: true,
-      description: 'Gate for the unified issue log.' },
-    { slug: 'issue_name', label: 'Issue / item name', type: 'text', required: true, group_id: 'issue',
-      description: 'Repeat the block per issue.', visible_when: { question: 'fv_issues_found', equals: true } },
-    { slug: 'issue_type', label: 'Issue type', type: 'select',
-      options: ['Furniture', 'Equipment', 'Maintenance', 'Other'], required: true, group_id: 'issue',
-      visible_when: { question: 'fv_issues_found', equals: true } },
-    { slug: 'issue_location', label: 'Location in unit', type: 'select',
-      options: ['Kitchen', 'Bathroom', 'Bedroom', 'Living room', 'Hallway', 'Balcony', 'Building/common', 'Other'], required: false, group_id: 'issue',
-      visible_when: { question: 'fv_issues_found', equals: true } },
-    { slug: 'issue_resolution', label: 'Resolution', type: 'select',
-      options: ['Buy', 'Fix', 'Replace', 'Monitor'], required: true, group_id: 'issue',
-      visible_when: { question: 'fv_issues_found', equals: true } },
-    { slug: 'issue_quantity', label: 'Quantity', type: 'number', required: false, group_id: 'issue',
-      visible_when: { question: 'fv_issues_found', equals: true } },
-    { slug: 'issue_cost_estimate_eur', label: 'Cost estimate (€)', type: 'number', required: false, group_id: 'issue',
-      visible_when: { question: 'fv_issues_found', equals: true } },
-    { slug: 'issue_urgency', label: 'Urgency', type: 'select',
-      options: ['Blocks go-live', 'Nice-to-have'], required: false, group_id: 'issue',
-      visible_when: { question: 'fv_issues_found', equals: true } },
-    { slug: 'issue_media', label: 'Photo / video of issue', type: 'file', mode: 'observe', required: true, group_id: 'issue',
-      visible_when: { question: 'fv_issues_found', equals: true } },
-    { slug: 'issue_notes', label: 'Issue notes', type: 'text', required: false, group_id: 'issue',
-      visible_when: { question: 'fv_issues_found', equals: true } },
-  ]},
-
-  // ── 11 · Unit appliances & amenities (unit_category) ─────────────────────
-  { id: '11', label: 'Unit appliances & amenities', scope: 'unit_category', questions: [
     { slug: 'fv_items_to_log', label: 'Any appliances/amenities to log?', type: 'boolean', options: YESNO, required: false,
       description: 'Gate for the item log (separate from the issue log).' },
     { slug: 'item_name', label: 'Item name', type: 'text', required: false, group_id: 'item',
@@ -373,6 +338,36 @@ export const PHASES = [
     { slug: 'fv_photo_kitchen', label: 'Kitchen photos', type: 'file', mode: 'observe', required: true },
     { slug: 'fv_photo_general_apartment', label: 'General apartment photos', type: 'file', mode: 'observe', required: true },
     { slug: 'fv_photo_window_ceiling', label: 'Window photos for measurement', type: 'file', mode: 'observe', required: false },
+  ]},
+
+  // ── 17 · Unit issue log (unit_category) ───────────────────────────────────
+  // Mirrors phase 16 (Building condition & issues): the issue log is the last
+  // substantive thing done for a unit, right before final assessment.
+  { id: '17', label: 'Unit issue log', scope: 'unit_category', questions: [
+    { slug: 'fv_issues_found', label: 'Any issues found in the unit?', type: 'boolean', options: YESNO, required: true,
+      description: 'Gate for the unified issue log.' },
+    { slug: 'issue_name', label: 'Issue / item name', type: 'text', required: true, group_id: 'issue',
+      description: 'Repeat the block per issue.', visible_when: { question: 'fv_issues_found', equals: true } },
+    { slug: 'issue_type', label: 'Issue type', type: 'select',
+      options: ['Furniture', 'Equipment', 'Maintenance', 'Other'], required: true, group_id: 'issue',
+      visible_when: { question: 'fv_issues_found', equals: true } },
+    { slug: 'issue_location', label: 'Location in unit', type: 'select',
+      options: ['Kitchen', 'Bathroom', 'Bedroom', 'Living room', 'Hallway', 'Balcony', 'Building/common', 'Other'], required: false, group_id: 'issue',
+      visible_when: { question: 'fv_issues_found', equals: true } },
+    { slug: 'issue_resolution', label: 'Resolution', type: 'select',
+      options: ['Buy', 'Fix', 'Replace', 'Monitor'], required: true, group_id: 'issue',
+      visible_when: { question: 'fv_issues_found', equals: true } },
+    { slug: 'issue_quantity', label: 'Quantity', type: 'number', required: false, group_id: 'issue',
+      visible_when: { question: 'fv_issues_found', equals: true } },
+    { slug: 'issue_cost_estimate_eur', label: 'Cost estimate (€)', type: 'number', required: false, group_id: 'issue',
+      visible_when: { question: 'fv_issues_found', equals: true } },
+    { slug: 'issue_urgency', label: 'Urgency', type: 'select',
+      options: ['Blocks go-live', 'Nice-to-have'], required: false, group_id: 'issue',
+      visible_when: { question: 'fv_issues_found', equals: true } },
+    { slug: 'issue_media', label: 'Photo / video of issue', type: 'file', mode: 'observe', required: true, group_id: 'issue',
+      visible_when: { question: 'fv_issues_found', equals: true } },
+    { slug: 'issue_notes', label: 'Issue notes', type: 'text', required: false, group_id: 'issue',
+      visible_when: { question: 'fv_issues_found', equals: true } },
   ]},
 
   // ── 15 · Final assessment / readiness (unit_category) ────────────────────

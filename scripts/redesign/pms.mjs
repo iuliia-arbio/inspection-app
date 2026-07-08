@@ -84,7 +84,6 @@ export const PMS = {
   fv_unit_type_check: 'profile.unitType', // F
   fv_unit_balconies_count: 'balconies', // T
   fv_view_actual: 'profile.viewType', // F
-  fv_apartment_category: 'propertyCategory', // T
   fv_location_noise_level: 'operationalInfo.noiseLevel', // F
   fv_location_noise_source: 'operationalInfo.noiseSource', // F
 

@@ -92,6 +92,8 @@ export const SECTION_VOICE_PROMPTS: Record<string, SectionPrompt[]> = {
         'fv_building_elevator_condition',
       ],
     },
+    // (No voice prompt for fv_common_area — a single multi-select chip picker is
+    // faster to tap than to dictate.)
   ],
 
   // 4 · Building access & check-in
@@ -162,8 +164,6 @@ export const SECTION_VOICE_PROMPTS: Record<string, SectionPrompt[]> = {
         'fv_fire_safety_concerns',
       ],
     },
-    // (No voice prompt for fv_common_area — a single multi-select chip picker is
-    // faster to tap than to dictate.)
   ],
 
   // 6 · Cleaning & laundry
@@ -205,12 +205,11 @@ export const SECTION_VOICE_PROMPTS: Record<string, SectionPrompt[]> = {
     {
       id: 'p8_identity',
       label:
-        'Identify the unit — its floor, number or location, the unit type, the apartment category, and whether it has a balcony and how many.',
+        'Identify the unit — its floor, number or location, the unit type, and whether it has a balcony and how many.',
       target_slugs: [
         'fv_unit_floor_number',
         'fv_unit_location_in_building',
         'fv_unit_type_check',
-        'fv_apartment_category',
         'fv_unit_balcony_present',
         'fv_unit_balconies_count',
       ],
@@ -243,38 +242,14 @@ export const SECTION_VOICE_PROMPTS: Record<string, SectionPrompt[]> = {
     },
   ],
 
-  // 10 · Unit condition & issues
-  '10': [
-    {
-      id: 'p10_condition',
-      label:
-        'How is the unit overall — is it furnished to Arbio standard, the equipment status, the bathroom condition, and are there any issues at all?',
-      target_slugs: [
-        'fv_furniture_status',
-        'fv_equipment_status',
-        'fv_bathroom_condition',
-        'fv_issues_found',
-      ],
-    },
-    {
-      id: 'p10_issues',
-      label:
-        'Go issue by issue — for each: what it is, the type, where in the unit, how to resolve it, quantity, rough cost, how urgent, and any notes.',
-      target_slugs: [
-        'issue_name',
-        'issue_type',
-        'issue_location',
-        'issue_resolution',
-        'issue_quantity',
-        'issue_cost_estimate_eur',
-        'issue_urgency',
-        'issue_notes',
-      ],
-    },
-  ],
-
-  // 11 · Unit appliances & amenities
+  // 11 · Unit condition, appliances & amenities
   '11': [
+    {
+      id: 'p11_condition',
+      label:
+        'How is the unit overall — is it furnished to Arbio standard, the equipment status, and the bathroom condition?',
+      target_slugs: ['fv_furniture_status', 'fv_equipment_status', 'fv_bathroom_condition'],
+    },
     {
       id: 'p11_items',
       label:
@@ -334,6 +309,45 @@ export const SECTION_VOICE_PROMPTS: Record<string, SectionPrompt[]> = {
         'fv_readiness_health_score',
         'fv_readiness_recommendation_summary',
         'fv_general_comments',
+      ],
+    },
+  ],
+
+  // 16 · Building condition & issues
+  '16': [
+    {
+      id: 'p16_issues',
+      label:
+        'Go issue by issue — for each: what it is, the type, the area of the building, how to resolve it, quantity, rough cost, how urgent, and any notes.',
+      target_slugs: [
+        'prop_issue_name',
+        'prop_issue_type',
+        'prop_issue_area',
+        'prop_issue_resolution',
+        'prop_issue_quantity',
+        'prop_issue_cost_estimate_eur',
+        'prop_issue_urgency',
+        'prop_issue_notes',
+      ],
+    },
+  ],
+
+  // 17 · Unit issue log
+  '17': [
+    {
+      id: 'p17_issues',
+      label:
+        'Are there any issues in the unit? If so, go issue by issue — for each: what it is, the type, where in the unit, how to resolve it, quantity, rough cost, how urgent, and any notes.',
+      target_slugs: [
+        'fv_issues_found',
+        'issue_name',
+        'issue_type',
+        'issue_location',
+        'issue_resolution',
+        'issue_quantity',
+        'issue_cost_estimate_eur',
+        'issue_urgency',
+        'issue_notes',
       ],
     },
   ],
