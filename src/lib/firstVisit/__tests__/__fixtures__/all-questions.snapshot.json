@@ -331,7 +331,7 @@
     "notes": null,
     "slug": "fv_parking_nearby_options",
     "label": "Nearby parking options",
-    "description": "AI-generated from the address; PM validates/regenerates.",
+    "description": null,
     "scope": "location",
     "type": "text",
     "options": [],
