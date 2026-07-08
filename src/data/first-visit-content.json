@@ -1175,22 +1175,6 @@
           "phase_label": "Unit identity"
         },
         {
-          "slug": "fv_apartment_category",
-          "label": "Apartment category",
-          "description": "Tiers anchored on finish quality, furnishing completeness, size and amenities — validate definitions with GX.",
-          "scope": "unit_category",
-          "type": "select",
-          "options": [
-            "Premium",
-            "Standard",
-            "Midscale",
-            "Below standard"
-          ],
-          "required": true,
-          "phase_id": "8",
-          "phase_label": "Unit identity"
-        },
-        {
           "slug": "fv_unit_balcony_present",
           "label": "Is there a balcony?",
           "description": "Gate: when \"No\", balcony count collapses.",

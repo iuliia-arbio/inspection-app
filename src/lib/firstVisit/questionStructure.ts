@@ -354,9 +354,6 @@ export const QUESTION_STRUCTURE: StructureOverlay = {
   "fv_unit_type_check": {
     "pms_target": "profile.unitType"
   },
-  "fv_apartment_category": {
-    "pms_target": "propertyCategory"
-  },
   "fv_unit_balconies_count": {
     "pms_target": "balconies",
     "visible_when": {

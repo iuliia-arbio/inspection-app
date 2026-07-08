@@ -216,12 +216,6 @@ export const PHASES = [
     { slug: 'fv_unit_location_in_building', label: 'Unit number / location (e.g. links · rechts · Mitte)', type: 'text', required: false },
     { slug: 'fv_unit_type_check', label: 'Unit type', type: 'select',
       options: ['Apartment', 'Studio', 'Loft', 'Maisonette', 'Other'], required: true },
-    // Kept with the identity block (after unit type) so the p8_identity voice
-    // prompt's fields are contiguous below the prompt — no unrelated questions
-    // wedged between the prompt and the fields it fills.
-    { slug: 'fv_apartment_category', label: 'Apartment category', type: 'select',
-      options: ['Premium', 'Standard', 'Midscale', 'Below standard'], required: true,
-      description: 'Tiers anchored on finish quality, furnishing completeness, size and amenities — validate definitions with GX.' },
     { slug: 'fv_unit_balcony_present', label: 'Is there a balcony?', type: 'boolean', options: YESNO, required: true,
       description: 'Gate: when "No", balcony count collapses.' },
     { slug: 'fv_unit_balconies_count', label: 'Number of balconies', type: 'number', required: false,
