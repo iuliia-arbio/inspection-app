@@ -22,6 +22,11 @@ const GROUPS: Record<string, RepeaterGroupMeta> = {
     intro: 'Document each access point in sequence, from building entrance to unit door.',
     itemNoun: 'Step',
   },
+  unit_checkin_step: {
+    title: 'Apartment door check-in',
+    intro: 'Document the apartment door access — lock type, provider, and key storage for this unit.',
+    itemNoun: 'Step',
+  },
   issue: {
     title: 'Issue log',
     intro: 'List each issue found — one per problem (broken, damaged, dirty, or missing).',

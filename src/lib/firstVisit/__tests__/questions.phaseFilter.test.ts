@@ -28,7 +28,7 @@ describe('phasesForScope phase filter', () => {
     const all = phasesForScope('unit_category').flatMap((p) =>
       p.questions.map((q) => q.slug),
     );
-    const a = phasesForScope('unit_category', ['7', '8', '9', '11']).flatMap((p) =>
+    const a = phasesForScope('unit_category', ['7', '8', '9', '11', '18']).flatMap((p) =>
       p.questions.map((q) => q.slug),
     );
     const b = phasesForScope('unit_category', ['12', '13', '14', '17', '15']).flatMap((p) =>

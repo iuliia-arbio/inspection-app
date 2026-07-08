@@ -19,9 +19,11 @@ describe('first-visit question config', () => {
     // (Building condition & issues, id 16) added a 10-question issue log.
     // fv_apartment_category was later removed (determined by hard criteria,
     // not inspector judgment), dropping the count to 144. +1 for the required
-    // fv_step_photo field added to the building check-in step group.
-    expect(CONFIG_META.counts.phases).toBe(16);
-    expect(CONFIG_META.counts.questions).toBe(145);
+    // fv_step_photo field added to the building check-in step group (145).
+    // +1 unit_category phase (Unit check-in — apartment door, id 18) added a
+    // 10-question per-unit twin of the building check-in group (155).
+    expect(CONFIG_META.counts.phases).toBe(17);
+    expect(CONFIG_META.counts.questions).toBe(155);
   });
 
   it('every question has a known scope', () => {

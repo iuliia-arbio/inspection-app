@@ -250,6 +250,36 @@ export const PHASES = [
     { slug: 'fv_capacity_comments', label: 'Capacity comments', type: 'text', required: false },
   ]},
 
+  // ── 18 · Unit check-in — apartment door (unit_category) ──────────────────
+  // Per-unit twin of phase 4's building-level check-in steps: building-wide
+  // entry points (Main Gate, Building Door) stay a one-time building
+  // walkthrough; the apartment door itself varies per unit, so it gets its
+  // own per-unit repeater here (copy-from-unit covers units that match).
+  { id: '18', label: 'Unit check-in — apartment door', scope: 'unit_category', questions: [
+    { slug: 'unit_step_name', label: 'Check-in step name', type: 'text', required: true, group_id: 'unit_checkin_step',
+      description: 'Free-text per step; repeatable — all per-step fields below repeat for each step.' },
+    { slug: 'unit_step_lock_type', label: 'Lock type', type: 'select',
+      options: ['Smart Lock', 'Keypad', 'Ring To Open', 'Call To Open', 'Chip', 'Physical Key'], required: true, group_id: 'unit_checkin_step' },
+    { slug: 'unit_step_smart_lock_provider', label: 'Smart lock provider', type: 'select',
+      options: ['Nuki', 'Akiles', 'Bold', 'RemoteLock', 'Salto', 'EVVA', 'Other'], required: false, group_id: 'unit_checkin_step',
+      visible_when: { question: 'unit_step_lock_type', not_in: ['Ring To Open', 'Call To Open'] } },
+    { slug: 'unit_step_smart_lock_device_id', label: 'Smart lock device ID / serial', type: 'text', required: false, group_id: 'unit_checkin_step',
+      visible_when: { question: 'unit_step_lock_type', not_in: ['Ring To Open', 'Call To Open'] } },
+    { slug: 'unit_step_lock_brand', label: 'Lock brand / manufacturer', type: 'text', required: false, group_id: 'unit_checkin_step',
+      visible_when: { question: 'unit_step_lock_type', not_in: ['Ring To Open', 'Call To Open'] } },
+    { slug: 'unit_step_lock_classification', label: 'Lock classification', type: 'select',
+      options: ['Primary', 'Backup'], required: true, group_id: 'unit_checkin_step',
+      visible_when: { question: 'unit_step_lock_type', not_in: ['Ring To Open', 'Call To Open'] } },
+    { slug: 'unit_step_key_storage_method', label: 'Key storage method', type: 'select',
+      options: ['Keybox', 'Locker', 'Human handover'], required: false, group_id: 'unit_checkin_step',
+      visible_when: { question: 'unit_step_lock_type', not_in: ['Ring To Open', 'Call To Open'] } },
+    { slug: 'unit_step_storage_brand', label: 'Storage brand', type: 'text', required: false, group_id: 'unit_checkin_step',
+      visible_when: { question: 'unit_step_lock_type', not_in: ['Ring To Open', 'Call To Open'] } },
+    { slug: 'unit_step_default_access_code', label: 'Default access code', type: 'text', required: false, group_id: 'unit_checkin_step',
+      visible_when: { question: 'unit_step_lock_type', not_in: ['Ring To Open', 'Call To Open'] } },
+    { slug: 'unit_step_photo', label: 'Photo of this check-in step', type: 'file', mode: 'observe', required: true, group_id: 'unit_checkin_step' },
+  ]},
+
   // ── 7 · WiFi (unit_category) ──────────────────────────────────────────────
   { id: '7', label: 'WiFi', scope: 'unit_category', questions: [
     { slug: 'fv_wifi_present', label: 'Wi-Fi available?', type: 'boolean', options: YESNO, required: true,

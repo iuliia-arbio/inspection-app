@@ -433,6 +433,86 @@ export const QUESTION_STRUCTURE: StructureOverlay = {
   "fv_capacity_max": {
     "pms_target": "property.maxOccupancy"
   },
+  "unit_step_name": {
+    "group_id": "unit_checkin_step"
+  },
+  "unit_step_lock_type": {
+    "group_id": "unit_checkin_step"
+  },
+  "unit_step_smart_lock_provider": {
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  "unit_step_smart_lock_device_id": {
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  "unit_step_lock_brand": {
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  "unit_step_lock_classification": {
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  "unit_step_key_storage_method": {
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  "unit_step_storage_brand": {
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  "unit_step_default_access_code": {
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  "unit_step_photo": {
+    "mode": "observe",
+    "group_id": "unit_checkin_step"
+  },
   "fv_wifi_ssid": {
     "pms_target": "profile.wifiDetails.networkName",
     "visible_when": {
