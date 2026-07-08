@@ -64,7 +64,7 @@ export const PHASES = [
     { slug: 'fv_building_construction_nearby', label: 'Construction site/disruption nearby?', type: 'boolean',
       options: ['No', 'Yes'], required: true },
     { slug: 'fv_building_amenities_verify', label: 'Building amenities', type: 'select', multi_select: true, allow_custom_options: true,
-      options: ['Aufzug', 'Gemeinschafts Balkon/Terrasse', 'Gemeinschaftsgarten', 'Schwimmbad', 'Sauna', 'Fitnessraum', 'Konferenzräume', 'Reception/Concierge', 'None'], required: true },
+      options: ['Elevator', 'Shared balcony/terrace', 'Shared garden', 'Pool', 'Sauna', 'Gym', 'Conference rooms', 'Reception/Concierge', 'None'], required: true },
     { slug: 'fv_accessibility_step_free_entry', label: 'Step-free entry to the building?', type: 'select',
       options: ['Yes', 'No', 'Partial'], required: false },
     { slug: 'fv_accessibility_ramps', label: 'Ramps / accessibility aids present?', type: 'text', required: false },
