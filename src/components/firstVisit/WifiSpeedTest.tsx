@@ -19,14 +19,6 @@ type LibreSpeedState = {
 
 type LibreSpeedInstance = {
   setParameter: (name: string, value: unknown) => void;
-  addTestPoint: (point: {
-    name: string;
-    server: string;
-    dlURL: string;
-    ulURL: string;
-    pingURL: string;
-    getIpURL: string;
-  }) => void;
   onupdate: (data: { testState: number; dlProgress: number; ulProgress: number; dlStatus: string; ulStatus: string }) => void;
   onend: (aborted: boolean) => void;
   getState: () => LibreSpeedState;
@@ -55,35 +47,47 @@ export function WifiSpeedTest({
     }
     setStatus('running');
     setProgress({ dl: 0, ul: 0 });
-    const test = new window.Speedtest();
-    test.setParameter('telemetry_level', 'none');
-    test.addTestPoint({
-      name: 'self',
-      server: '',
-      dlURL: '/api/first-visit/speedtest/download',
-      ulURL: '/api/first-visit/speedtest/upload',
-      pingURL: '/api/first-visit/speedtest/ping',
-      getIpURL: '/api/first-visit/speedtest/ping',
-    });
-    test.onupdate = (data) => {
-      setProgress({ dl: data.dlProgress, ul: data.ulProgress });
-    };
-    test.onend = (aborted: boolean) => {
-      if (aborted) {
-        setStatus('error');
-        return;
-      }
-      const dl = Number(test.getState().dlStatus);
-      const ul = Number(test.getState().ulStatus);
-      if (Number.isFinite(dl) && Number.isFinite(ul)) {
-        onResult({ downloadMbps: dl, uploadMbps: ul });
-        setStatus('done');
-      } else {
-        setStatus('error');
-      }
-    };
-    testRef.current = test;
-    test.start();
+    try {
+      const test = new window.Speedtest();
+      test.setParameter('telemetry_level', 'none');
+      // Single-server config: setParameter(url_*) + start() directly.
+      // Do NOT use addTestPoint/selectServer here — that path requires
+      // selectServer() to be called before start(), otherwise LibreSpeed
+      // throws synchronously and the test never runs (see speedtest.js start()).
+      test.setParameter('url_dl', '/api/first-visit/speedtest/download');
+      test.setParameter('url_ul', '/api/first-visit/speedtest/upload');
+      test.setParameter('url_ping', '/api/first-visit/speedtest/ping');
+      test.setParameter('url_getIp', '/api/first-visit/speedtest/ping');
+      test.onupdate = (data) => {
+        // testState 5 = aborted (see speedtest.js docs); onend will also
+        // fire with aborted=true right after, but flag it here too so the
+        // UI doesn't sit at a frozen progress value in the meantime.
+        if (data.testState === 5) {
+          setStatus('error');
+          return;
+        }
+        setProgress({ dl: data.dlProgress, ul: data.ulProgress });
+      };
+      test.onend = (aborted: boolean) => {
+        if (aborted) {
+          setStatus('error');
+          return;
+        }
+        const dl = Number(test.getState().dlStatus);
+        const ul = Number(test.getState().ulStatus);
+        if (Number.isFinite(dl) && Number.isFinite(ul)) {
+          onResult({ downloadMbps: dl, uploadMbps: ul });
+          setStatus('done');
+        } else {
+          setStatus('error');
+        }
+      };
+      testRef.current = test;
+      test.start();
+    } catch (err) {
+      console.error('WifiSpeedTest failed to start', err);
+      setStatus('error');
+    }
   };
 
   return (
