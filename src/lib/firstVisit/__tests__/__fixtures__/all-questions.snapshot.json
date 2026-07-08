@@ -2173,8 +2173,8 @@
       "No overhaul"
     ],
     "required": true,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues"
+    "phase_id": "11",
+    "phase_label": "Unit condition, appliances & amenities"
   },
   {
     "mode": "data",
@@ -2194,8 +2194,8 @@
       "Significant additions"
     ],
     "required": true,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues"
+    "phase_id": "11",
+    "phase_label": "Unit condition, appliances & amenities"
   },
   {
     "mode": "data",
@@ -2216,248 +2216,8 @@
       "Needs renovation"
     ],
     "required": true,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues"
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "fv_issues_found",
-    "label": "Any issues found in the unit?",
-    "description": "Gate for the unified issue log.",
-    "scope": "unit_category",
-    "type": "boolean",
-    "options": [
-      "Yes",
-      "No"
-    ],
-    "required": true,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues"
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_name",
-    "label": "Issue / item name",
-    "description": "Repeat the block per issue.",
-    "scope": "unit_category",
-    "type": "text",
-    "options": [],
-    "required": true,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_type",
-    "label": "Issue type",
-    "description": null,
-    "scope": "unit_category",
-    "type": "select",
-    "options": [
-      "Furniture",
-      "Equipment",
-      "Maintenance",
-      "Other"
-    ],
-    "required": true,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_location",
-    "label": "Location in unit",
-    "description": null,
-    "scope": "unit_category",
-    "type": "select",
-    "options": [
-      "Kitchen",
-      "Bathroom",
-      "Bedroom",
-      "Living room",
-      "Hallway",
-      "Balcony",
-      "Building/common",
-      "Other"
-    ],
-    "required": false,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_resolution",
-    "label": "Resolution",
-    "description": null,
-    "scope": "unit_category",
-    "type": "select",
-    "options": [
-      "Buy",
-      "Fix",
-      "Replace",
-      "Monitor"
-    ],
-    "required": true,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_quantity",
-    "label": "Quantity",
-    "description": null,
-    "scope": "unit_category",
-    "type": "number",
-    "options": [],
-    "required": false,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_cost_estimate_eur",
-    "label": "Cost estimate (€)",
-    "description": null,
-    "scope": "unit_category",
-    "type": "number",
-    "options": [],
-    "required": false,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_urgency",
-    "label": "Urgency",
-    "description": null,
-    "scope": "unit_category",
-    "type": "select",
-    "options": [
-      "Blocks go-live",
-      "Nice-to-have"
-    ],
-    "required": false,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  {
-    "mode": "observe",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_media",
-    "label": "Photo / video of issue",
-    "description": null,
-    "scope": "unit_category",
-    "type": "file",
-    "options": [],
-    "required": true,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_notes",
-    "label": "Issue notes",
-    "description": null,
-    "scope": "unit_category",
-    "type": "text",
-    "options": [],
-    "required": false,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
+    "phase_id": "11",
+    "phase_label": "Unit condition, appliances & amenities"
   },
   {
     "mode": "data",
@@ -2477,7 +2237,7 @@
     ],
     "required": false,
     "phase_id": "11",
-    "phase_label": "Unit appliances & amenities"
+    "phase_label": "Unit condition, appliances & amenities"
   },
   {
     "mode": "data",
@@ -2494,7 +2254,7 @@
     "options": [],
     "required": false,
     "phase_id": "11",
-    "phase_label": "Unit appliances & amenities",
+    "phase_label": "Unit condition, appliances & amenities",
     "group_id": "item",
     "visible_when": {
       "question": "fv_items_to_log",
@@ -2520,7 +2280,7 @@
     ],
     "required": false,
     "phase_id": "11",
-    "phase_label": "Unit appliances & amenities",
+    "phase_label": "Unit condition, appliances & amenities",
     "group_id": "item",
     "visible_when": {
       "question": "fv_items_to_log",
@@ -2542,7 +2302,7 @@
     "options": [],
     "required": false,
     "phase_id": "11",
-    "phase_label": "Unit appliances & amenities",
+    "phase_label": "Unit condition, appliances & amenities",
     "group_id": "item",
     "visible_when": {
       "question": "fv_items_to_log",
@@ -2564,7 +2324,7 @@
     "options": [],
     "required": false,
     "phase_id": "11",
-    "phase_label": "Unit appliances & amenities",
+    "phase_label": "Unit condition, appliances & amenities",
     "group_id": "item",
     "visible_when": {
       "question": "fv_items_to_log",
@@ -2586,7 +2346,7 @@
     "options": [],
     "required": false,
     "phase_id": "11",
-    "phase_label": "Unit appliances & amenities",
+    "phase_label": "Unit condition, appliances & amenities",
     "group_id": "item",
     "visible_when": {
       "question": "fv_items_to_log",
@@ -2613,7 +2373,7 @@
     ],
     "required": false,
     "phase_id": "11",
-    "phase_label": "Unit appliances & amenities",
+    "phase_label": "Unit condition, appliances & amenities",
     "group_id": "item",
     "visible_when": {
       "question": "fv_items_to_log",
@@ -2635,7 +2395,7 @@
     "options": [],
     "required": false,
     "phase_id": "11",
-    "phase_label": "Unit appliances & amenities",
+    "phase_label": "Unit condition, appliances & amenities",
     "group_id": "item",
     "visible_when": {
       "question": "fv_items_to_log",
@@ -3006,6 +2766,246 @@
     "required": false,
     "phase_id": "14",
     "phase_label": "Unit photos & videos"
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "fv_issues_found",
+    "label": "Any issues found in the unit?",
+    "description": "Gate for the unified issue log.",
+    "scope": "unit_category",
+    "type": "boolean",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "required": true,
+    "phase_id": "17",
+    "phase_label": "Unit issue log"
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_name",
+    "label": "Issue / item name",
+    "description": "Repeat the block per issue.",
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": true,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_type",
+    "label": "Issue type",
+    "description": null,
+    "scope": "unit_category",
+    "type": "select",
+    "options": [
+      "Furniture",
+      "Equipment",
+      "Maintenance",
+      "Other"
+    ],
+    "required": true,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_location",
+    "label": "Location in unit",
+    "description": null,
+    "scope": "unit_category",
+    "type": "select",
+    "options": [
+      "Kitchen",
+      "Bathroom",
+      "Bedroom",
+      "Living room",
+      "Hallway",
+      "Balcony",
+      "Building/common",
+      "Other"
+    ],
+    "required": false,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_resolution",
+    "label": "Resolution",
+    "description": null,
+    "scope": "unit_category",
+    "type": "select",
+    "options": [
+      "Buy",
+      "Fix",
+      "Replace",
+      "Monitor"
+    ],
+    "required": true,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_quantity",
+    "label": "Quantity",
+    "description": null,
+    "scope": "unit_category",
+    "type": "number",
+    "options": [],
+    "required": false,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_cost_estimate_eur",
+    "label": "Cost estimate (€)",
+    "description": null,
+    "scope": "unit_category",
+    "type": "number",
+    "options": [],
+    "required": false,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_urgency",
+    "label": "Urgency",
+    "description": null,
+    "scope": "unit_category",
+    "type": "select",
+    "options": [
+      "Blocks go-live",
+      "Nice-to-have"
+    ],
+    "required": false,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  {
+    "mode": "observe",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_media",
+    "label": "Photo / video of issue",
+    "description": null,
+    "scope": "unit_category",
+    "type": "file",
+    "options": [],
+    "required": true,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_notes",
+    "label": "Issue notes",
+    "description": null,
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": false,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
   },
   {
     "mode": "data",

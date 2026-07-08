@@ -178,7 +178,7 @@ export const PHASES = [
   ]},
 
   // ── 16 · Building condition & issues (location) ──────────────────────────
-  // Property-level mirror of the unit issue log (phase 10). Distinct
+  // Property-level mirror of the unit issue log (phase 17). Distinct
   // `prop_issue_*` slugs + group_id 'prop_issue' so the hub can tell a
   // building/common-area defect apart from a unit defect. Placed here (after
   // the location phases, before the unit phases) so it renders within the
@@ -260,8 +260,8 @@ export const PHASES = [
       visible_when: { question: 'fv_wifi_present', equals: true } },
   ]},
 
-  // ── 10 · Unit condition & issues (unit_category) ─────────────────────────
-  { id: '10', label: 'Unit condition & issues', scope: 'unit_category', questions: [
+  // ── 11 · Unit condition, appliances & amenities (unit_category) ──────────
+  { id: '11', label: 'Unit condition, appliances & amenities', scope: 'unit_category', questions: [
     { slug: 'fv_furniture_status', label: 'Furnished to Arbio standard?', type: 'select',
       options: ['Yes fully', 'Mostly', 'No significant', 'No overhaul'], required: true,
       description: 'Arbio standard: required furniture set (bed, seating, dining, storage), condition/quality, completeness vs the checklist — validate with GX.' },
@@ -271,34 +271,6 @@ export const PHASES = [
     { slug: 'fv_bathroom_condition', label: 'Bathroom condition', type: 'select',
       options: ['Excellent', 'Good', 'Needs minor', 'Needs renovation'], required: true,
       description: 'What excellent means: cleanliness; fixtures working; sealing/grout intact; ventilation; no mold or leaks.' },
-    { slug: 'fv_issues_found', label: 'Any issues found in the unit?', type: 'boolean', options: YESNO, required: true,
-      description: 'Gate for the unified issue log.' },
-    { slug: 'issue_name', label: 'Issue / item name', type: 'text', required: true, group_id: 'issue',
-      description: 'Repeat the block per issue.', visible_when: { question: 'fv_issues_found', equals: true } },
-    { slug: 'issue_type', label: 'Issue type', type: 'select',
-      options: ['Furniture', 'Equipment', 'Maintenance', 'Other'], required: true, group_id: 'issue',
-      visible_when: { question: 'fv_issues_found', equals: true } },
-    { slug: 'issue_location', label: 'Location in unit', type: 'select',
-      options: ['Kitchen', 'Bathroom', 'Bedroom', 'Living room', 'Hallway', 'Balcony', 'Building/common', 'Other'], required: false, group_id: 'issue',
-      visible_when: { question: 'fv_issues_found', equals: true } },
-    { slug: 'issue_resolution', label: 'Resolution', type: 'select',
-      options: ['Buy', 'Fix', 'Replace', 'Monitor'], required: true, group_id: 'issue',
-      visible_when: { question: 'fv_issues_found', equals: true } },
-    { slug: 'issue_quantity', label: 'Quantity', type: 'number', required: false, group_id: 'issue',
-      visible_when: { question: 'fv_issues_found', equals: true } },
-    { slug: 'issue_cost_estimate_eur', label: 'Cost estimate (€)', type: 'number', required: false, group_id: 'issue',
-      visible_when: { question: 'fv_issues_found', equals: true } },
-    { slug: 'issue_urgency', label: 'Urgency', type: 'select',
-      options: ['Blocks go-live', 'Nice-to-have'], required: false, group_id: 'issue',
-      visible_when: { question: 'fv_issues_found', equals: true } },
-    { slug: 'issue_media', label: 'Photo / video of issue', type: 'file', mode: 'observe', required: true, group_id: 'issue',
-      visible_when: { question: 'fv_issues_found', equals: true } },
-    { slug: 'issue_notes', label: 'Issue notes', type: 'text', required: false, group_id: 'issue',
-      visible_when: { question: 'fv_issues_found', equals: true } },
-  ]},
-
-  // ── 11 · Unit appliances & amenities (unit_category) ─────────────────────
-  { id: '11', label: 'Unit appliances & amenities', scope: 'unit_category', questions: [
     { slug: 'fv_items_to_log', label: 'Any appliances/amenities to log?', type: 'boolean', options: YESNO, required: false,
       description: 'Gate for the item log (separate from the issue log).' },
     { slug: 'item_name', label: 'Item name', type: 'text', required: false, group_id: 'item',
@@ -366,6 +338,36 @@ export const PHASES = [
     { slug: 'fv_photo_kitchen', label: 'Kitchen photos', type: 'file', mode: 'observe', required: true },
     { slug: 'fv_photo_general_apartment', label: 'General apartment photos', type: 'file', mode: 'observe', required: true },
     { slug: 'fv_photo_window_ceiling', label: 'Window photos for measurement', type: 'file', mode: 'observe', required: false },
+  ]},
+
+  // ── 17 · Unit issue log (unit_category) ───────────────────────────────────
+  // Mirrors phase 16 (Building condition & issues): the issue log is the last
+  // substantive thing done for a unit, right before final assessment.
+  { id: '17', label: 'Unit issue log', scope: 'unit_category', questions: [
+    { slug: 'fv_issues_found', label: 'Any issues found in the unit?', type: 'boolean', options: YESNO, required: true,
+      description: 'Gate for the unified issue log.' },
+    { slug: 'issue_name', label: 'Issue / item name', type: 'text', required: true, group_id: 'issue',
+      description: 'Repeat the block per issue.', visible_when: { question: 'fv_issues_found', equals: true } },
+    { slug: 'issue_type', label: 'Issue type', type: 'select',
+      options: ['Furniture', 'Equipment', 'Maintenance', 'Other'], required: true, group_id: 'issue',
+      visible_when: { question: 'fv_issues_found', equals: true } },
+    { slug: 'issue_location', label: 'Location in unit', type: 'select',
+      options: ['Kitchen', 'Bathroom', 'Bedroom', 'Living room', 'Hallway', 'Balcony', 'Building/common', 'Other'], required: false, group_id: 'issue',
+      visible_when: { question: 'fv_issues_found', equals: true } },
+    { slug: 'issue_resolution', label: 'Resolution', type: 'select',
+      options: ['Buy', 'Fix', 'Replace', 'Monitor'], required: true, group_id: 'issue',
+      visible_when: { question: 'fv_issues_found', equals: true } },
+    { slug: 'issue_quantity', label: 'Quantity', type: 'number', required: false, group_id: 'issue',
+      visible_when: { question: 'fv_issues_found', equals: true } },
+    { slug: 'issue_cost_estimate_eur', label: 'Cost estimate (€)', type: 'number', required: false, group_id: 'issue',
+      visible_when: { question: 'fv_issues_found', equals: true } },
+    { slug: 'issue_urgency', label: 'Urgency', type: 'select',
+      options: ['Blocks go-live', 'Nice-to-have'], required: false, group_id: 'issue',
+      visible_when: { question: 'fv_issues_found', equals: true } },
+    { slug: 'issue_media', label: 'Photo / video of issue', type: 'file', mode: 'observe', required: true, group_id: 'issue',
+      visible_when: { question: 'fv_issues_found', equals: true } },
+    { slug: 'issue_notes', label: 'Issue notes', type: 'text', required: false, group_id: 'issue',
+      visible_when: { question: 'fv_issues_found', equals: true } },
   ]},
 
   // ── 15 · Final assessment / readiness (unit_category) ────────────────────

@@ -422,70 +422,6 @@ export const QUESTION_STRUCTURE: StructureOverlay = {
       "equals": true
     }
   },
-  "issue_name": {
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  "issue_type": {
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  "issue_location": {
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  "issue_resolution": {
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  "issue_quantity": {
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  "issue_cost_estimate_eur": {
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  "issue_urgency": {
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  "issue_media": {
-    "mode": "observe",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  "issue_notes": {
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
   "item_name": {
     "pms_target": "equipmentAndAmenities.name",
     "group_id": "item",
@@ -609,6 +545,70 @@ export const QUESTION_STRUCTURE: StructureOverlay = {
   "fv_photo_window_ceiling": {
     "mode": "observe",
     "pms_target": "profile.photos.url"
+  },
+  "issue_name": {
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  "issue_type": {
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  "issue_location": {
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  "issue_resolution": {
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  "issue_quantity": {
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  "issue_cost_estimate_eur": {
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  "issue_urgency": {
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  "issue_media": {
+    "mode": "observe",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  "issue_notes": {
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
   },
   "fv_readiness_overall": {
     "pms_target": "status.readinessStatus"
