@@ -29,7 +29,7 @@ import { lookupHubValue, type HubSnapshot } from '@/lib/firstVisit/snapshot';
 import { repeaterGroupMeta } from '@/lib/firstVisit/repeaterGroups';
 import { requiredVisible } from '@/lib/firstVisit/progress';
 import { track } from '@/lib/firstVisit/analytics';
-import { VoicePromptCard } from '@/components/firstVisit/SectionVoicePrompts';
+import { VoicePromptCard, VoiceSummaryChip } from '@/components/firstVisit/SectionVoicePrompts';
 import { WifiSpeedTest } from '@/components/firstVisit/WifiSpeedTest';
 import { useSectionVoiceFill } from '@/lib/firstVisit/useSectionVoiceFill';
 import { promptsForPhase, voiceSummarySlug } from '@/data/section-voice-prompts';
@@ -533,7 +533,7 @@ export function UnitSurvey({
           <Fragment key={`vp-${p.id}`}>
             <VoicePromptCard prompt={p} phaseId={phase.id} fill={voiceFill} />
             {hasSummary && (
-              <QuestionRow
+              <VoiceSummaryChip
                 question={sq}
                 inspectionId={inspectionId}
                 targetId={target.id}
