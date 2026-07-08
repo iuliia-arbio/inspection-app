@@ -991,95 +991,6 @@
       ]
     },
     {
-      "id": "7",
-      "label": "WiFi",
-      "questions": [
-        {
-          "slug": "fv_wifi_present",
-          "label": "Wi-Fi available?",
-          "description": "Gate: when \"No\", WiFi sub-questions collapse.",
-          "scope": "location",
-          "type": "boolean",
-          "options": [
-            "Yes",
-            "No"
-          ],
-          "required": true,
-          "phase_id": "7",
-          "phase_label": "WiFi"
-        },
-        {
-          "slug": "fv_wifi_ssid",
-          "label": "WiFi network name (SSID)",
-          "description": null,
-          "scope": "location",
-          "type": "text",
-          "options": [],
-          "required": false,
-          "phase_id": "7",
-          "phase_label": "WiFi"
-        },
-        {
-          "slug": "fv_wifi_password",
-          "label": "WiFi password",
-          "description": null,
-          "scope": "location",
-          "type": "text",
-          "options": [],
-          "required": false,
-          "phase_id": "7",
-          "phase_label": "WiFi"
-        },
-        {
-          "slug": "fv_wifi_download_speed_mbps",
-          "label": "WiFi download speed (Mbps)",
-          "description": null,
-          "scope": "location",
-          "type": "number",
-          "options": [],
-          "required": false,
-          "phase_id": "7",
-          "phase_label": "WiFi"
-        },
-        {
-          "slug": "fv_wifi_upload_speed_mbps",
-          "label": "WiFi upload speed (Mbps)",
-          "description": null,
-          "scope": "location",
-          "type": "number",
-          "options": [],
-          "required": false,
-          "phase_id": "7",
-          "phase_label": "WiFi"
-        },
-        {
-          "slug": "fv_wifi_router_location",
-          "label": "WiFi router physical location",
-          "description": null,
-          "scope": "location",
-          "type": "text",
-          "options": [],
-          "required": false,
-          "phase_id": "7",
-          "phase_label": "WiFi"
-        },
-        {
-          "slug": "fv_wifi_guest_router_access",
-          "label": "Guest access to router?",
-          "description": null,
-          "scope": "location",
-          "type": "boolean",
-          "options": [
-            "Yes",
-            "No"
-          ],
-          "required": false,
-          "phase_id": "7",
-          "phase_label": "WiFi"
-        }
-      ]
-    },
-    {
       "id": "16",
       "label": "Building condition & issues",
       "questions": [
@@ -1429,6 +1340,95 @@
           "required": false,
           "phase_id": "9",
           "phase_label": "Unit capacity"
+        }
+      ]
+    },
+    {
+      "id": "7",
+      "label": "WiFi",
+      "questions": [
+        {
+          "slug": "fv_wifi_present",
+          "label": "Wi-Fi available?",
+          "description": "Gate: when \"No\", WiFi sub-questions collapse.",
+          "scope": "unit_category",
+          "type": "boolean",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true,
+          "phase_id": "7",
+          "phase_label": "WiFi"
+        },
+        {
+          "slug": "fv_wifi_ssid",
+          "label": "WiFi network name (SSID)",
+          "description": null,
+          "scope": "unit_category",
+          "type": "text",
+          "options": [],
+          "required": false,
+          "phase_id": "7",
+          "phase_label": "WiFi"
+        },
+        {
+          "slug": "fv_wifi_password",
+          "label": "WiFi password",
+          "description": null,
+          "scope": "unit_category",
+          "type": "text",
+          "options": [],
+          "required": false,
+          "phase_id": "7",
+          "phase_label": "WiFi"
+        },
+        {
+          "slug": "fv_wifi_download_speed_mbps",
+          "label": "WiFi download speed (Mbps)",
+          "description": null,
+          "scope": "unit_category",
+          "type": "number",
+          "options": [],
+          "required": false,
+          "phase_id": "7",
+          "phase_label": "WiFi"
+        },
+        {
+          "slug": "fv_wifi_upload_speed_mbps",
+          "label": "WiFi upload speed (Mbps)",
+          "description": null,
+          "scope": "unit_category",
+          "type": "number",
+          "options": [],
+          "required": false,
+          "phase_id": "7",
+          "phase_label": "WiFi"
+        },
+        {
+          "slug": "fv_wifi_router_location",
+          "label": "WiFi router physical location",
+          "description": null,
+          "scope": "unit_category",
+          "type": "text",
+          "options": [],
+          "required": false,
+          "phase_id": "7",
+          "phase_label": "WiFi"
+        },
+        {
+          "slug": "fv_wifi_guest_router_access",
+          "label": "Guest access to router?",
+          "description": null,
+          "scope": "unit_category",
+          "type": "boolean",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": false,
+          "phase_id": "7",
+          "phase_label": "WiFi"
         }
       ]
     },

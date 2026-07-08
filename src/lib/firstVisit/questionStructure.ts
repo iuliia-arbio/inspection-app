@@ -281,48 +281,6 @@ export const QUESTION_STRUCTURE: StructureOverlay = {
   "fv_laundry_nearest_laundromat": {
     "pms_target": "nearby.title"
   },
-  "fv_wifi_ssid": {
-    "pms_target": "profile.wifiDetails.networkName",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
-  "fv_wifi_password": {
-    "pms_target": "profile.wifiDetails.password",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
-  "fv_wifi_download_speed_mbps": {
-    "pms_target": "profile.wifiDetails.downloadSpeedMbps",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
-  "fv_wifi_upload_speed_mbps": {
-    "pms_target": "profile.wifiDetails.uploadSpeedMbps",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
-  "fv_wifi_router_location": {
-    "pms_target": "profile.wifiDetails.routerLocation",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
-  "fv_wifi_guest_router_access": {
-    "pms_target": "profile.wifiDetails.guestRouterAccess",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
   "prop_issue_name": {
     "group_id": "prop_issue",
     "visible_when": {
@@ -424,6 +382,48 @@ export const QUESTION_STRUCTURE: StructureOverlay = {
   },
   "fv_capacity_max": {
     "pms_target": "property.maxOccupancy"
+  },
+  "fv_wifi_ssid": {
+    "pms_target": "profile.wifiDetails.networkName",
+    "visible_when": {
+      "question": "fv_wifi_present",
+      "equals": true
+    }
+  },
+  "fv_wifi_password": {
+    "pms_target": "profile.wifiDetails.password",
+    "visible_when": {
+      "question": "fv_wifi_present",
+      "equals": true
+    }
+  },
+  "fv_wifi_download_speed_mbps": {
+    "pms_target": "profile.wifiDetails.downloadSpeedMbps",
+    "visible_when": {
+      "question": "fv_wifi_present",
+      "equals": true
+    }
+  },
+  "fv_wifi_upload_speed_mbps": {
+    "pms_target": "profile.wifiDetails.uploadSpeedMbps",
+    "visible_when": {
+      "question": "fv_wifi_present",
+      "equals": true
+    }
+  },
+  "fv_wifi_router_location": {
+    "pms_target": "profile.wifiDetails.routerLocation",
+    "visible_when": {
+      "question": "fv_wifi_present",
+      "equals": true
+    }
+  },
+  "fv_wifi_guest_router_access": {
+    "pms_target": "profile.wifiDetails.guestRouterAccess",
+    "visible_when": {
+      "question": "fv_wifi_present",
+      "equals": true
+    }
   },
   "issue_name": {
     "group_id": "issue",

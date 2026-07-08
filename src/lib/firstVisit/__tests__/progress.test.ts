@@ -153,10 +153,11 @@ describe('computeProgressFromAnswers', () => {
 
 describe('computeProgressFromAnswers phase filter', () => {
   it('filtered unit_category progress for two phase subsets sums to the unfiltered total', () => {
-    // unit_category spans phases 8..15. Splitting them into two disjoint subsets
-    // and filtering each must add back up to the unfiltered scope total.
+    // unit_category spans phases 7..15 (7 = WiFi, relocated from location).
+    // Splitting them into two disjoint subsets and filtering each must add
+    // back up to the unfiltered scope total.
     const whole = computeProgressFromAnswers('unit_category', []);
-    const firstHalf = computeProgressFromAnswers('unit_category', [], ['8', '9', '10', '11']);
+    const firstHalf = computeProgressFromAnswers('unit_category', [], ['7', '8', '9', '10', '11']);
     const secondHalf = computeProgressFromAnswers('unit_category', [], ['12', '13', '14', '15']);
     expect(firstHalf.total + secondHalf.total).toBe(whole.total);
     expect(firstHalf.total).toBeGreaterThan(0);

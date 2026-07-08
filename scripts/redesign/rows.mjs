@@ -178,24 +178,6 @@ export const PHASES = [
       options: ['Early check-in', 'Late check-out', 'Express cleaning', 'Baby bed', 'High chair', 'Parking', 'Breakfast', 'Airport transfer', 'None'], required: true },
   ]},
 
-  // ── 7 · WiFi (location) ──────────────────────────────────────────────────
-  { id: '7', label: 'WiFi', scope: 'location', questions: [
-    { slug: 'fv_wifi_present', label: 'Wi-Fi available?', type: 'boolean', options: YESNO, required: true,
-      description: 'Gate: when "No", WiFi sub-questions collapse.' },
-    { slug: 'fv_wifi_ssid', label: 'WiFi network name (SSID)', type: 'text', required: false,
-      visible_when: { question: 'fv_wifi_present', equals: true } },
-    { slug: 'fv_wifi_password', label: 'WiFi password', type: 'text', required: false,
-      visible_when: { question: 'fv_wifi_present', equals: true } },
-    { slug: 'fv_wifi_download_speed_mbps', label: 'WiFi download speed (Mbps)', type: 'number', required: false,
-      visible_when: { question: 'fv_wifi_present', equals: true } },
-    { slug: 'fv_wifi_upload_speed_mbps', label: 'WiFi upload speed (Mbps)', type: 'number', required: false,
-      visible_when: { question: 'fv_wifi_present', equals: true } },
-    { slug: 'fv_wifi_router_location', label: 'WiFi router physical location', type: 'text', required: false,
-      visible_when: { question: 'fv_wifi_present', equals: true } },
-    { slug: 'fv_wifi_guest_router_access', label: 'Guest access to router?', type: 'boolean', options: YESNO, required: false,
-      visible_when: { question: 'fv_wifi_present', equals: true } },
-  ]},
-
   // ── 16 · Building condition & issues (location) ──────────────────────────
   // Property-level mirror of the unit issue log (phase 10). Distinct
   // `prop_issue_*` slugs + group_id 'prop_issue' so the hub can tell a
@@ -265,6 +247,24 @@ export const PHASES = [
     { slug: 'fv_capacity_max', label: 'Max capacity (incl. sofa beds/extra)', type: 'number', required: true },
     { slug: 'fv_capacity_actual_setup', label: 'Capacity / bed setup notes', type: 'text', required: false },
     { slug: 'fv_capacity_comments', label: 'Capacity comments', type: 'text', required: false },
+  ]},
+
+  // ── 7 · WiFi (unit_category) ──────────────────────────────────────────────
+  { id: '7', label: 'WiFi', scope: 'unit_category', questions: [
+    { slug: 'fv_wifi_present', label: 'Wi-Fi available?', type: 'boolean', options: YESNO, required: true,
+      description: 'Gate: when "No", WiFi sub-questions collapse.' },
+    { slug: 'fv_wifi_ssid', label: 'WiFi network name (SSID)', type: 'text', required: false,
+      visible_when: { question: 'fv_wifi_present', equals: true } },
+    { slug: 'fv_wifi_password', label: 'WiFi password', type: 'text', required: false,
+      visible_when: { question: 'fv_wifi_present', equals: true } },
+    { slug: 'fv_wifi_download_speed_mbps', label: 'WiFi download speed (Mbps)', type: 'number', required: false,
+      visible_when: { question: 'fv_wifi_present', equals: true } },
+    { slug: 'fv_wifi_upload_speed_mbps', label: 'WiFi upload speed (Mbps)', type: 'number', required: false,
+      visible_when: { question: 'fv_wifi_present', equals: true } },
+    { slug: 'fv_wifi_router_location', label: 'WiFi router physical location', type: 'text', required: false,
+      visible_when: { question: 'fv_wifi_present', equals: true } },
+    { slug: 'fv_wifi_guest_router_access', label: 'Guest access to router?', type: 'boolean', options: YESNO, required: false,
+      visible_when: { question: 'fv_wifi_present', equals: true } },
   ]},
 
   // ── 10 · Unit condition & issues (unit_category) ─────────────────────────
