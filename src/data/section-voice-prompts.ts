@@ -92,6 +92,8 @@ export const SECTION_VOICE_PROMPTS: Record<string, SectionPrompt[]> = {
         'fv_building_elevator_condition',
       ],
     },
+    // (No voice prompt for fv_common_area — a single multi-select chip picker is
+    // faster to tap than to dictate.)
   ],
 
   // 4 · Building access & check-in
@@ -162,8 +164,6 @@ export const SECTION_VOICE_PROMPTS: Record<string, SectionPrompt[]> = {
         'fv_fire_safety_concerns',
       ],
     },
-    // (No voice prompt for fv_common_area — a single multi-select chip picker is
-    // faster to tap than to dictate.)
   ],
 
   // 6 · Cleaning & laundry

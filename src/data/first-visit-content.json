@@ -316,6 +316,29 @@
           "phase_label": "Building exterior & parking"
         },
         {
+          "slug": "fv_common_area",
+          "label": "Common areas / building facilities",
+          "description": null,
+          "scope": "location",
+          "type": "select",
+          "options": [
+            "Lobby",
+            "Rooftop",
+            "Courtyard",
+            "SmokingArea",
+            "Storage",
+            "Shared kitchen",
+            "Shared garden",
+            "Other",
+            "None"
+          ],
+          "required": false,
+          "multi_select": true,
+          "allow_custom_options": true,
+          "phase_id": "3",
+          "phase_label": "Building exterior & parking"
+        },
+        {
           "slug": "fv_accessibility_step_free_entry",
           "label": "Step-free entry to the building?",
           "description": null,
@@ -880,29 +903,6 @@
           "type": "file",
           "options": [],
           "required": false,
-          "phase_id": "5",
-          "phase_label": "Building infrastructure & services"
-        },
-        {
-          "slug": "fv_common_area",
-          "label": "Common areas / building facilities",
-          "description": null,
-          "scope": "location",
-          "type": "select",
-          "options": [
-            "Lobby",
-            "Rooftop",
-            "Courtyard",
-            "SmokingArea",
-            "Storage",
-            "Shared kitchen",
-            "Shared garden",
-            "Other",
-            "None"
-          ],
-          "required": false,
-          "multi_select": true,
-          "allow_custom_options": true,
           "phase_id": "5",
           "phase_label": "Building infrastructure & services"
         }

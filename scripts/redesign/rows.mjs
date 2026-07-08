@@ -65,6 +65,8 @@ export const PHASES = [
       options: ['No', 'Yes'], required: true },
     { slug: 'fv_building_amenities_verify', label: 'Building amenities', type: 'select', multi_select: true, allow_custom_options: true,
       options: ['Elevator', 'Shared balcony/terrace', 'Shared garden', 'Pool', 'Sauna', 'Gym', 'Conference rooms', 'Reception/Concierge', 'None'], required: true },
+    { slug: 'fv_common_area', label: 'Common areas / building facilities', type: 'select', multi_select: true, allow_custom_options: true,
+      options: ['Lobby', 'Rooftop', 'Courtyard', 'SmokingArea', 'Storage', 'Shared kitchen', 'Shared garden', 'Other', 'None'], required: false },
     { slug: 'fv_accessibility_step_free_entry', label: 'Step-free entry to the building?', type: 'select',
       options: ['Yes', 'No', 'Partial'], required: false },
     { slug: 'fv_accessibility_ramps', label: 'Ramps / accessibility aids present?', type: 'text', required: false },
@@ -159,8 +161,6 @@ export const PHASES = [
       visible_when: { question: 'fv_fire_safety_present', equals: true } },
     { slug: 'fv_photo_fire_safety', label: 'Fire safety photos (extinguisher, exits, detectors)', type: 'file', mode: 'observe', required: false,
       visible_when: { question: 'fv_fire_safety_present', equals: true } },
-    { slug: 'fv_common_area', label: 'Common areas / building facilities', type: 'select', multi_select: true, allow_custom_options: true,
-      options: ['Lobby', 'Rooftop', 'Courtyard', 'SmokingArea', 'Storage', 'Shared kitchen', 'Shared garden', 'Other', 'None'], required: false },
   ]},
 
   // ── 6 · Cleaning & laundry (location) ────────────────────────────────────
