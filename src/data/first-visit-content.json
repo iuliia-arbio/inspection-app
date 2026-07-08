@@ -224,7 +224,7 @@
         {
           "slug": "fv_parking_nearby_options",
           "label": "Nearby parking options",
-          "description": "AI-generated from the address; PM validates/regenerates.",
+          "description": null,
           "scope": "location",
           "type": "text",
           "options": [],
@@ -299,17 +299,40 @@
           "scope": "location",
           "type": "select",
           "options": [
-            "Aufzug",
-            "Gemeinschafts Balkon/Terrasse",
-            "Gemeinschaftsgarten",
-            "Schwimmbad",
+            "Elevator",
+            "Shared balcony/terrace",
+            "Shared garden",
+            "Pool",
             "Sauna",
-            "Fitnessraum",
-            "Konferenzräume",
+            "Gym",
+            "Conference rooms",
             "Reception/Concierge",
             "None"
           ],
           "required": true,
+          "multi_select": true,
+          "allow_custom_options": true,
+          "phase_id": "3",
+          "phase_label": "Building exterior & parking"
+        },
+        {
+          "slug": "fv_common_area",
+          "label": "Common areas / building facilities",
+          "description": null,
+          "scope": "location",
+          "type": "select",
+          "options": [
+            "Lobby",
+            "Rooftop",
+            "Courtyard",
+            "SmokingArea",
+            "Storage",
+            "Shared kitchen",
+            "Shared garden",
+            "Other",
+            "None"
+          ],
+          "required": false,
           "multi_select": true,
           "allow_custom_options": true,
           "phase_id": "3",
@@ -439,7 +462,6 @@
           "options": [
             "Main Gate",
             "Building Door",
-            "Apartment Door",
             "Other"
           ],
           "required": true,
@@ -553,6 +575,17 @@
           "type": "text",
           "options": [],
           "required": false,
+          "phase_id": "4",
+          "phase_label": "Building access & check-in"
+        },
+        {
+          "slug": "fv_step_photo",
+          "label": "Photo of this check-in step",
+          "description": null,
+          "scope": "location",
+          "type": "file",
+          "options": [],
+          "required": true,
           "phase_id": "4",
           "phase_label": "Building access & check-in"
         },
@@ -882,29 +915,6 @@
           "required": false,
           "phase_id": "5",
           "phase_label": "Building infrastructure & services"
-        },
-        {
-          "slug": "fv_common_area",
-          "label": "Common areas / building facilities",
-          "description": null,
-          "scope": "location",
-          "type": "select",
-          "options": [
-            "Lobby",
-            "Rooftop",
-            "Courtyard",
-            "SmokingArea",
-            "Storage",
-            "Shared kitchen",
-            "Shared garden",
-            "Other",
-            "None"
-          ],
-          "required": false,
-          "multi_select": true,
-          "allow_custom_options": true,
-          "phase_id": "5",
-          "phase_label": "Building infrastructure & services"
         }
       ]
     },
@@ -987,95 +997,6 @@
           "multi_select": true,
           "phase_id": "6",
           "phase_label": "Cleaning & laundry"
-        }
-      ]
-    },
-    {
-      "id": "7",
-      "label": "WiFi",
-      "questions": [
-        {
-          "slug": "fv_wifi_present",
-          "label": "Wi-Fi available?",
-          "description": "Gate: when \"No\", WiFi sub-questions collapse.",
-          "scope": "location",
-          "type": "boolean",
-          "options": [
-            "Yes",
-            "No"
-          ],
-          "required": true,
-          "phase_id": "7",
-          "phase_label": "WiFi"
-        },
-        {
-          "slug": "fv_wifi_ssid",
-          "label": "WiFi network name (SSID)",
-          "description": null,
-          "scope": "location",
-          "type": "text",
-          "options": [],
-          "required": false,
-          "phase_id": "7",
-          "phase_label": "WiFi"
-        },
-        {
-          "slug": "fv_wifi_password",
-          "label": "WiFi password",
-          "description": null,
-          "scope": "location",
-          "type": "text",
-          "options": [],
-          "required": false,
-          "phase_id": "7",
-          "phase_label": "WiFi"
-        },
-        {
-          "slug": "fv_wifi_download_speed_mbps",
-          "label": "WiFi download speed (Mbps)",
-          "description": null,
-          "scope": "location",
-          "type": "number",
-          "options": [],
-          "required": false,
-          "phase_id": "7",
-          "phase_label": "WiFi"
-        },
-        {
-          "slug": "fv_wifi_upload_speed_mbps",
-          "label": "WiFi upload speed (Mbps)",
-          "description": null,
-          "scope": "location",
-          "type": "number",
-          "options": [],
-          "required": false,
-          "phase_id": "7",
-          "phase_label": "WiFi"
-        },
-        {
-          "slug": "fv_wifi_router_location",
-          "label": "WiFi router physical location",
-          "description": null,
-          "scope": "location",
-          "type": "text",
-          "options": [],
-          "required": false,
-          "phase_id": "7",
-          "phase_label": "WiFi"
-        },
-        {
-          "slug": "fv_wifi_guest_router_access",
-          "label": "Guest access to router?",
-          "description": null,
-          "scope": "location",
-          "type": "boolean",
-          "options": [
-            "Yes",
-            "No"
-          ],
-          "required": false,
-          "phase_id": "7",
-          "phase_label": "WiFi"
         }
       ]
     },
@@ -1264,22 +1185,6 @@
           "phase_label": "Unit identity"
         },
         {
-          "slug": "fv_apartment_category",
-          "label": "Apartment category",
-          "description": "Tiers anchored on finish quality, furnishing completeness, size and amenities — validate definitions with GX.",
-          "scope": "unit_category",
-          "type": "select",
-          "options": [
-            "Premium",
-            "Standard",
-            "Midscale",
-            "Below standard"
-          ],
-          "required": true,
-          "phase_id": "8",
-          "phase_label": "Unit identity"
-        },
-        {
           "slug": "fv_unit_balcony_present",
           "label": "Is there a balcony?",
           "description": "Gate: when \"No\", balcony count collapses.",
@@ -1433,8 +1338,235 @@
       ]
     },
     {
-      "id": "10",
-      "label": "Unit condition & issues",
+      "id": "18",
+      "label": "Unit check-in — apartment door",
+      "questions": [
+        {
+          "slug": "unit_step_name",
+          "label": "Check-in step name",
+          "description": "Free-text per step; repeatable — all per-step fields below repeat for each step.",
+          "scope": "unit_category",
+          "type": "text",
+          "options": [],
+          "required": true,
+          "phase_id": "18",
+          "phase_label": "Unit check-in — apartment door"
+        },
+        {
+          "slug": "unit_step_lock_type",
+          "label": "Lock type",
+          "description": null,
+          "scope": "unit_category",
+          "type": "select",
+          "options": [
+            "Smart Lock",
+            "Keypad",
+            "Ring To Open",
+            "Call To Open",
+            "Chip",
+            "Physical Key"
+          ],
+          "required": true,
+          "phase_id": "18",
+          "phase_label": "Unit check-in — apartment door"
+        },
+        {
+          "slug": "unit_step_smart_lock_provider",
+          "label": "Smart lock provider",
+          "description": null,
+          "scope": "unit_category",
+          "type": "select",
+          "options": [
+            "Nuki",
+            "Akiles",
+            "Bold",
+            "RemoteLock",
+            "Salto",
+            "EVVA",
+            "Other"
+          ],
+          "required": false,
+          "phase_id": "18",
+          "phase_label": "Unit check-in — apartment door"
+        },
+        {
+          "slug": "unit_step_smart_lock_device_id",
+          "label": "Smart lock device ID / serial",
+          "description": null,
+          "scope": "unit_category",
+          "type": "text",
+          "options": [],
+          "required": false,
+          "phase_id": "18",
+          "phase_label": "Unit check-in — apartment door"
+        },
+        {
+          "slug": "unit_step_lock_brand",
+          "label": "Lock brand / manufacturer",
+          "description": null,
+          "scope": "unit_category",
+          "type": "text",
+          "options": [],
+          "required": false,
+          "phase_id": "18",
+          "phase_label": "Unit check-in — apartment door"
+        },
+        {
+          "slug": "unit_step_lock_classification",
+          "label": "Lock classification",
+          "description": null,
+          "scope": "unit_category",
+          "type": "select",
+          "options": [
+            "Primary",
+            "Backup"
+          ],
+          "required": true,
+          "phase_id": "18",
+          "phase_label": "Unit check-in — apartment door"
+        },
+        {
+          "slug": "unit_step_key_storage_method",
+          "label": "Key storage method",
+          "description": null,
+          "scope": "unit_category",
+          "type": "select",
+          "options": [
+            "Keybox",
+            "Locker",
+            "Human handover"
+          ],
+          "required": false,
+          "phase_id": "18",
+          "phase_label": "Unit check-in — apartment door"
+        },
+        {
+          "slug": "unit_step_storage_brand",
+          "label": "Storage brand",
+          "description": null,
+          "scope": "unit_category",
+          "type": "text",
+          "options": [],
+          "required": false,
+          "phase_id": "18",
+          "phase_label": "Unit check-in — apartment door"
+        },
+        {
+          "slug": "unit_step_default_access_code",
+          "label": "Default access code",
+          "description": null,
+          "scope": "unit_category",
+          "type": "text",
+          "options": [],
+          "required": false,
+          "phase_id": "18",
+          "phase_label": "Unit check-in — apartment door"
+        },
+        {
+          "slug": "unit_step_photo",
+          "label": "Photo of this check-in step",
+          "description": null,
+          "scope": "unit_category",
+          "type": "file",
+          "options": [],
+          "required": true,
+          "phase_id": "18",
+          "phase_label": "Unit check-in — apartment door"
+        }
+      ]
+    },
+    {
+      "id": "7",
+      "label": "WiFi",
+      "questions": [
+        {
+          "slug": "fv_wifi_present",
+          "label": "Wi-Fi available?",
+          "description": "Gate: when \"No\", WiFi sub-questions collapse.",
+          "scope": "unit_category",
+          "type": "boolean",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true,
+          "phase_id": "7",
+          "phase_label": "WiFi"
+        },
+        {
+          "slug": "fv_wifi_ssid",
+          "label": "WiFi network name (SSID)",
+          "description": null,
+          "scope": "unit_category",
+          "type": "text",
+          "options": [],
+          "required": false,
+          "phase_id": "7",
+          "phase_label": "WiFi"
+        },
+        {
+          "slug": "fv_wifi_password",
+          "label": "WiFi password",
+          "description": null,
+          "scope": "unit_category",
+          "type": "text",
+          "options": [],
+          "required": false,
+          "phase_id": "7",
+          "phase_label": "WiFi"
+        },
+        {
+          "slug": "fv_wifi_download_speed_mbps",
+          "label": "WiFi download speed (Mbps)",
+          "description": null,
+          "scope": "unit_category",
+          "type": "number",
+          "options": [],
+          "required": false,
+          "phase_id": "7",
+          "phase_label": "WiFi"
+        },
+        {
+          "slug": "fv_wifi_upload_speed_mbps",
+          "label": "WiFi upload speed (Mbps)",
+          "description": null,
+          "scope": "unit_category",
+          "type": "number",
+          "options": [],
+          "required": false,
+          "phase_id": "7",
+          "phase_label": "WiFi"
+        },
+        {
+          "slug": "fv_wifi_router_location",
+          "label": "WiFi router physical location",
+          "description": null,
+          "scope": "unit_category",
+          "type": "text",
+          "options": [],
+          "required": false,
+          "phase_id": "7",
+          "phase_label": "WiFi"
+        },
+        {
+          "slug": "fv_wifi_guest_router_access",
+          "label": "Guest access to router?",
+          "description": null,
+          "scope": "unit_category",
+          "type": "boolean",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": false,
+          "phase_id": "7",
+          "phase_label": "WiFi"
+        }
+      ]
+    },
+    {
+      "id": "11",
+      "label": "Unit condition, appliances & amenities",
       "questions": [
         {
           "slug": "fv_furniture_status",
@@ -1449,8 +1581,8 @@
             "No overhaul"
           ],
           "required": true,
-          "phase_id": "10",
-          "phase_label": "Unit condition & issues"
+          "phase_id": "11",
+          "phase_label": "Unit condition, appliances & amenities"
         },
         {
           "slug": "fv_equipment_status",
@@ -1464,8 +1596,8 @@
             "Significant additions"
           ],
           "required": true,
-          "phase_id": "10",
-          "phase_label": "Unit condition & issues"
+          "phase_id": "11",
+          "phase_label": "Unit condition, appliances & amenities"
         },
         {
           "slug": "fv_bathroom_condition",
@@ -1480,150 +1612,9 @@
             "Needs renovation"
           ],
           "required": true,
-          "phase_id": "10",
-          "phase_label": "Unit condition & issues"
+          "phase_id": "11",
+          "phase_label": "Unit condition, appliances & amenities"
         },
-        {
-          "slug": "fv_issues_found",
-          "label": "Any issues found in the unit?",
-          "description": "Gate for the unified issue log.",
-          "scope": "unit_category",
-          "type": "boolean",
-          "options": [
-            "Yes",
-            "No"
-          ],
-          "required": true,
-          "phase_id": "10",
-          "phase_label": "Unit condition & issues"
-        },
-        {
-          "slug": "issue_name",
-          "label": "Issue / item name",
-          "description": "Repeat the block per issue.",
-          "scope": "unit_category",
-          "type": "text",
-          "options": [],
-          "required": true,
-          "phase_id": "10",
-          "phase_label": "Unit condition & issues"
-        },
-        {
-          "slug": "issue_type",
-          "label": "Issue type",
-          "description": null,
-          "scope": "unit_category",
-          "type": "select",
-          "options": [
-            "Furniture",
-            "Equipment",
-            "Maintenance",
-            "Other"
-          ],
-          "required": true,
-          "phase_id": "10",
-          "phase_label": "Unit condition & issues"
-        },
-        {
-          "slug": "issue_location",
-          "label": "Location in unit",
-          "description": null,
-          "scope": "unit_category",
-          "type": "select",
-          "options": [
-            "Kitchen",
-            "Bathroom",
-            "Bedroom",
-            "Living room",
-            "Hallway",
-            "Balcony",
-            "Building/common",
-            "Other"
-          ],
-          "required": false,
-          "phase_id": "10",
-          "phase_label": "Unit condition & issues"
-        },
-        {
-          "slug": "issue_resolution",
-          "label": "Resolution",
-          "description": null,
-          "scope": "unit_category",
-          "type": "select",
-          "options": [
-            "Buy",
-            "Fix",
-            "Replace",
-            "Monitor"
-          ],
-          "required": true,
-          "phase_id": "10",
-          "phase_label": "Unit condition & issues"
-        },
-        {
-          "slug": "issue_quantity",
-          "label": "Quantity",
-          "description": null,
-          "scope": "unit_category",
-          "type": "number",
-          "options": [],
-          "required": false,
-          "phase_id": "10",
-          "phase_label": "Unit condition & issues"
-        },
-        {
-          "slug": "issue_cost_estimate_eur",
-          "label": "Cost estimate (€)",
-          "description": null,
-          "scope": "unit_category",
-          "type": "number",
-          "options": [],
-          "required": false,
-          "phase_id": "10",
-          "phase_label": "Unit condition & issues"
-        },
-        {
-          "slug": "issue_urgency",
-          "label": "Urgency",
-          "description": null,
-          "scope": "unit_category",
-          "type": "select",
-          "options": [
-            "Blocks go-live",
-            "Nice-to-have"
-          ],
-          "required": false,
-          "phase_id": "10",
-          "phase_label": "Unit condition & issues"
-        },
-        {
-          "slug": "issue_media",
-          "label": "Photo / video of issue",
-          "description": null,
-          "scope": "unit_category",
-          "type": "file",
-          "options": [],
-          "required": true,
-          "phase_id": "10",
-          "phase_label": "Unit condition & issues"
-        },
-        {
-          "slug": "issue_notes",
-          "label": "Issue notes",
-          "description": null,
-          "scope": "unit_category",
-          "type": "text",
-          "options": [],
-          "required": false,
-          "phase_id": "10",
-          "phase_label": "Unit condition & issues"
-        }
-      ]
-    },
-    {
-      "id": "11",
-      "label": "Unit appliances & amenities",
-      "questions": [
         {
           "slug": "fv_items_to_log",
           "label": "Any appliances/amenities to log?",
@@ -1636,7 +1627,7 @@
           ],
           "required": false,
           "phase_id": "11",
-          "phase_label": "Unit appliances & amenities"
+          "phase_label": "Unit condition, appliances & amenities"
         },
         {
           "slug": "item_name",
@@ -1647,7 +1638,7 @@
           "options": [],
           "required": false,
           "phase_id": "11",
-          "phase_label": "Unit appliances & amenities"
+          "phase_label": "Unit condition, appliances & amenities"
         },
         {
           "slug": "item_kind",
@@ -1662,7 +1653,7 @@
           ],
           "required": false,
           "phase_id": "11",
-          "phase_label": "Unit appliances & amenities"
+          "phase_label": "Unit condition, appliances & amenities"
         },
         {
           "slug": "item_brand",
@@ -1673,7 +1664,7 @@
           "options": [],
           "required": false,
           "phase_id": "11",
-          "phase_label": "Unit appliances & amenities"
+          "phase_label": "Unit condition, appliances & amenities"
         },
         {
           "slug": "item_location",
@@ -1684,7 +1675,7 @@
           "options": [],
           "required": false,
           "phase_id": "11",
-          "phase_label": "Unit appliances & amenities"
+          "phase_label": "Unit condition, appliances & amenities"
         },
         {
           "slug": "item_instructions",
@@ -1695,7 +1686,7 @@
           "options": [],
           "required": false,
           "phase_id": "11",
-          "phase_label": "Unit appliances & amenities"
+          "phase_label": "Unit condition, appliances & amenities"
         },
         {
           "slug": "item_availability_type",
@@ -1711,7 +1702,7 @@
           ],
           "required": false,
           "phase_id": "11",
-          "phase_label": "Unit appliances & amenities"
+          "phase_label": "Unit condition, appliances & amenities"
         },
         {
           "slug": "item_video",
@@ -1722,7 +1713,7 @@
           "options": [],
           "required": false,
           "phase_id": "11",
-          "phase_label": "Unit appliances & amenities"
+          "phase_label": "Unit condition, appliances & amenities"
         }
       ]
     },
@@ -1970,6 +1961,147 @@
           "required": false,
           "phase_id": "14",
           "phase_label": "Unit photos & videos"
+        }
+      ]
+    },
+    {
+      "id": "17",
+      "label": "Unit issue log",
+      "questions": [
+        {
+          "slug": "fv_issues_found",
+          "label": "Any issues found in the unit?",
+          "description": "Gate for the unified issue log.",
+          "scope": "unit_category",
+          "type": "boolean",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true,
+          "phase_id": "17",
+          "phase_label": "Unit issue log"
+        },
+        {
+          "slug": "issue_name",
+          "label": "Issue / item name",
+          "description": "Repeat the block per issue.",
+          "scope": "unit_category",
+          "type": "text",
+          "options": [],
+          "required": true,
+          "phase_id": "17",
+          "phase_label": "Unit issue log"
+        },
+        {
+          "slug": "issue_type",
+          "label": "Issue type",
+          "description": null,
+          "scope": "unit_category",
+          "type": "select",
+          "options": [
+            "Furniture",
+            "Equipment",
+            "Maintenance",
+            "Other"
+          ],
+          "required": true,
+          "phase_id": "17",
+          "phase_label": "Unit issue log"
+        },
+        {
+          "slug": "issue_location",
+          "label": "Location in unit",
+          "description": null,
+          "scope": "unit_category",
+          "type": "select",
+          "options": [
+            "Kitchen",
+            "Bathroom",
+            "Bedroom",
+            "Living room",
+            "Hallway",
+            "Balcony",
+            "Building/common",
+            "Other"
+          ],
+          "required": false,
+          "phase_id": "17",
+          "phase_label": "Unit issue log"
+        },
+        {
+          "slug": "issue_resolution",
+          "label": "Resolution",
+          "description": null,
+          "scope": "unit_category",
+          "type": "select",
+          "options": [
+            "Buy",
+            "Fix",
+            "Replace",
+            "Monitor"
+          ],
+          "required": true,
+          "phase_id": "17",
+          "phase_label": "Unit issue log"
+        },
+        {
+          "slug": "issue_quantity",
+          "label": "Quantity",
+          "description": null,
+          "scope": "unit_category",
+          "type": "number",
+          "options": [],
+          "required": false,
+          "phase_id": "17",
+          "phase_label": "Unit issue log"
+        },
+        {
+          "slug": "issue_cost_estimate_eur",
+          "label": "Cost estimate (€)",
+          "description": null,
+          "scope": "unit_category",
+          "type": "number",
+          "options": [],
+          "required": false,
+          "phase_id": "17",
+          "phase_label": "Unit issue log"
+        },
+        {
+          "slug": "issue_urgency",
+          "label": "Urgency",
+          "description": null,
+          "scope": "unit_category",
+          "type": "select",
+          "options": [
+            "Blocks go-live",
+            "Nice-to-have"
+          ],
+          "required": false,
+          "phase_id": "17",
+          "phase_label": "Unit issue log"
+        },
+        {
+          "slug": "issue_media",
+          "label": "Photo / video of issue",
+          "description": null,
+          "scope": "unit_category",
+          "type": "file",
+          "options": [],
+          "required": true,
+          "phase_id": "17",
+          "phase_label": "Unit issue log"
+        },
+        {
+          "slug": "issue_notes",
+          "label": "Issue notes",
+          "description": null,
+          "scope": "unit_category",
+          "type": "text",
+          "options": [],
+          "required": false,
+          "phase_id": "17",
+          "phase_label": "Unit issue log"
         }
       ]
     },

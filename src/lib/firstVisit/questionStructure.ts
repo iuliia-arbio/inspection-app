@@ -106,30 +106,83 @@ export const QUESTION_STRUCTURE: StructureOverlay = {
   },
   "fv_step_smart_lock_provider": {
     "pms_target": "accessInfo.checkInSteps.lock.provider",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   "fv_step_smart_lock_device_id": {
     "pms_target": "accessInfo.checkInSteps.lock.externalId",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   "fv_step_lock_brand": {
     "pms_target": "accessInfo.checkInSteps.lock.brand",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   "fv_step_lock_classification": {
     "pms_target": "accessInfo.checkInSteps.lock.classification",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   "fv_step_key_storage_method": {
     "pms_target": "accessInfo.checkInSteps.lock.storageType",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   "fv_step_storage_brand": {
     "pms_target": "accessInfo.checkInSteps.lock.storageBrand",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   "fv_step_default_access_code": {
     "pms_target": "accessInfo.checkInSteps.lock.defaultCode",
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  "fv_step_photo": {
+    "mode": "observe",
     "group_id": "checkin_step"
   },
   "fv_video_checkin_walkthrough": {
@@ -281,48 +334,6 @@ export const QUESTION_STRUCTURE: StructureOverlay = {
   "fv_laundry_nearest_laundromat": {
     "pms_target": "nearby.title"
   },
-  "fv_wifi_ssid": {
-    "pms_target": "profile.wifiDetails.networkName",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
-  "fv_wifi_password": {
-    "pms_target": "profile.wifiDetails.password",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
-  "fv_wifi_download_speed_mbps": {
-    "pms_target": "profile.wifiDetails.downloadSpeedMbps",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
-  "fv_wifi_upload_speed_mbps": {
-    "pms_target": "profile.wifiDetails.uploadSpeedMbps",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
-  "fv_wifi_router_location": {
-    "pms_target": "profile.wifiDetails.routerLocation",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
-  "fv_wifi_guest_router_access": {
-    "pms_target": "profile.wifiDetails.guestRouterAccess",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
   "prop_issue_name": {
     "group_id": "prop_issue",
     "visible_when": {
@@ -396,9 +407,6 @@ export const QUESTION_STRUCTURE: StructureOverlay = {
   "fv_unit_type_check": {
     "pms_target": "profile.unitType"
   },
-  "fv_apartment_category": {
-    "pms_target": "propertyCategory"
-  },
   "fv_unit_balconies_count": {
     "pms_target": "balconies",
     "visible_when": {
@@ -425,67 +433,125 @@ export const QUESTION_STRUCTURE: StructureOverlay = {
   "fv_capacity_max": {
     "pms_target": "property.maxOccupancy"
   },
-  "issue_name": {
-    "group_id": "issue",
+  "unit_step_name": {
+    "group_id": "unit_checkin_step"
+  },
+  "unit_step_lock_type": {
+    "group_id": "unit_checkin_step"
+  },
+  "unit_step_smart_lock_provider": {
+    "group_id": "unit_checkin_step",
     "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
     }
   },
-  "issue_type": {
-    "group_id": "issue",
+  "unit_step_smart_lock_device_id": {
+    "group_id": "unit_checkin_step",
     "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
     }
   },
-  "issue_location": {
-    "group_id": "issue",
+  "unit_step_lock_brand": {
+    "group_id": "unit_checkin_step",
     "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
     }
   },
-  "issue_resolution": {
-    "group_id": "issue",
+  "unit_step_lock_classification": {
+    "group_id": "unit_checkin_step",
     "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
     }
   },
-  "issue_quantity": {
-    "group_id": "issue",
+  "unit_step_key_storage_method": {
+    "group_id": "unit_checkin_step",
     "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
     }
   },
-  "issue_cost_estimate_eur": {
-    "group_id": "issue",
+  "unit_step_storage_brand": {
+    "group_id": "unit_checkin_step",
     "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
     }
   },
-  "issue_urgency": {
-    "group_id": "issue",
+  "unit_step_default_access_code": {
+    "group_id": "unit_checkin_step",
     "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
     }
   },
-  "issue_media": {
+  "unit_step_photo": {
     "mode": "observe",
-    "group_id": "issue",
+    "group_id": "unit_checkin_step"
+  },
+  "fv_wifi_ssid": {
+    "pms_target": "profile.wifiDetails.networkName",
     "visible_when": {
-      "question": "fv_issues_found",
+      "question": "fv_wifi_present",
       "equals": true
     }
   },
-  "issue_notes": {
-    "group_id": "issue",
+  "fv_wifi_password": {
+    "pms_target": "profile.wifiDetails.password",
     "visible_when": {
-      "question": "fv_issues_found",
+      "question": "fv_wifi_present",
+      "equals": true
+    }
+  },
+  "fv_wifi_download_speed_mbps": {
+    "pms_target": "profile.wifiDetails.downloadSpeedMbps",
+    "visible_when": {
+      "question": "fv_wifi_present",
+      "equals": true
+    }
+  },
+  "fv_wifi_upload_speed_mbps": {
+    "pms_target": "profile.wifiDetails.uploadSpeedMbps",
+    "visible_when": {
+      "question": "fv_wifi_present",
+      "equals": true
+    }
+  },
+  "fv_wifi_router_location": {
+    "pms_target": "profile.wifiDetails.routerLocation",
+    "visible_when": {
+      "question": "fv_wifi_present",
+      "equals": true
+    }
+  },
+  "fv_wifi_guest_router_access": {
+    "pms_target": "profile.wifiDetails.guestRouterAccess",
+    "visible_when": {
+      "question": "fv_wifi_present",
       "equals": true
     }
   },
@@ -612,6 +678,70 @@ export const QUESTION_STRUCTURE: StructureOverlay = {
   "fv_photo_window_ceiling": {
     "mode": "observe",
     "pms_target": "profile.photos.url"
+  },
+  "issue_name": {
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  "issue_type": {
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  "issue_location": {
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  "issue_resolution": {
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  "issue_quantity": {
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  "issue_cost_estimate_eur": {
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  "issue_urgency": {
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  "issue_media": {
+    "mode": "observe",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  "issue_notes": {
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
   },
   "fv_readiness_overall": {
     "pms_target": "status.readinessStatus"

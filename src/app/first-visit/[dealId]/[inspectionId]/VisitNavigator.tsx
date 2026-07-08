@@ -585,7 +585,7 @@ export default function VisitNavigator({
                     onClick={() => deleteProperty(p)}
                     title="Delete property"
                     aria-label={`Delete ${p.label}`}
-                    className="px-2 py-1 text-xs text-gray-400 hover:text-red-600"
+                    className="flex h-10 w-10 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600"
                   >
                     🗑
                   </button>
@@ -831,7 +831,7 @@ function UnitRow({
         onClick={onStartRename}
         title="Rename unit"
         aria-label={`Rename ${unit.label}`}
-        className="px-2 py-1 text-xs text-gray-400 hover:text-gray-700"
+        className="flex h-10 w-10 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700"
       >
         ✎
       </button>
@@ -840,7 +840,7 @@ function UnitRow({
         onClick={onDelete}
         title="Delete unit"
         aria-label={`Delete ${unit.label}`}
-        className="px-2 py-1 text-xs text-gray-400 hover:text-red-600"
+        className="flex h-10 w-10 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600"
       >
         🗑
       </button>
@@ -868,7 +868,7 @@ function AddPropertyControl({
     return (
       <button
         onClick={onOpen}
-        className="mt-3 rounded border border-dashed border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+        className="mt-3 min-h-[44px] rounded border border-dashed border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
       >
         + Add property
       </button>
@@ -948,7 +948,7 @@ function AddUnitControl({
     return (
       <button
         onClick={onOpen}
-        className="mt-2 text-xs text-gray-500 hover:text-gray-900"
+        className="mt-2 min-h-[44px] px-2 text-xs text-gray-500 hover:text-gray-900"
       >
         + Add unit
       </button>

@@ -16,6 +16,7 @@ export function AttachAffordance({
   answerId,
   notes,
   onNotesChange,
+  hideMedia = false,
 }: {
   inspectionId: string;
   targetId: string;
@@ -24,6 +25,11 @@ export function AttachAffordance({
   answerId?: string;
   notes?: string;
   onNotesChange: (next: string) => void;
+  // Suppresses the photo/video capture buttons and the MediaGallery mount.
+  // Set for type='file' questions, which already render their own
+  // MediaButtons + MediaGallery — without this, both render, producing a
+  // literal duplicate photo/video UI. The note capability stays available.
+  hideMedia?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [showNote, setShowNote] = useState(false);
@@ -58,7 +64,7 @@ export function AttachAffordance({
   // false and expands the card. Keeping the gallery at the same tree position in
   // both states prevents React from unmounting/remounting it (which would reset
   // its rows to [] and re-fire onCount(0), causing a flip-flop).
-  const compact = !open && !hasNote && mediaCount === 0;
+  const compact = !open && !hasNote && (hideMedia || mediaCount === 0);
 
   return (
     <div className="mt-1 flex flex-col gap-2">
@@ -107,40 +113,44 @@ export function AttachAffordance({
                 >
                   📝 {showNote || hasNote ? 'Hide note' : 'Note'}
                 </button>
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  onClick={() => photoRef.current?.click()}
-                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-xs hover:bg-gray-100"
-                >
-                  📷 Photo
-                </button>
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  onClick={() => videoRef.current?.click()}
-                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-xs hover:bg-gray-100"
-                >
-                  🎥 Video
-                </button>
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  onClick={() => photoUploadRef.current?.click()}
-                  title="Upload photo from device"
-                  className="rounded p-2 text-xs text-gray-400 hover:text-gray-700"
-                >
-                  ⤓ photo
-                </button>
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  onClick={() => videoUploadRef.current?.click()}
-                  title="Upload video from device"
-                  className="rounded p-2 text-xs text-gray-400 hover:text-gray-700"
-                >
-                  ⤓ video
-                </button>
+                {!hideMedia && (
+                  <>
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => photoRef.current?.click()}
+                      className="rounded-md border border-gray-300 bg-white px-3 py-2 text-xs hover:bg-gray-100"
+                    >
+                      📷 Photo
+                    </button>
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => videoRef.current?.click()}
+                      className="rounded-md border border-gray-300 bg-white px-3 py-2 text-xs hover:bg-gray-100"
+                    >
+                      🎥 Video
+                    </button>
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => photoUploadRef.current?.click()}
+                      title="Upload photo from device"
+                      className="rounded p-2 text-xs text-gray-400 hover:text-gray-700"
+                    >
+                      ⤓ photo
+                    </button>
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => videoUploadRef.current?.click()}
+                      title="Upload video from device"
+                      className="rounded p-2 text-xs text-gray-400 hover:text-gray-700"
+                    >
+                      ⤓ video
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -148,45 +158,51 @@ export function AttachAffordance({
       )}
 
       {/* Stable across compact/expanded so it never unmounts: the single source
-          of truth for the count, reported up via onCount. Self-hides when empty. */}
-      <MediaGallery
-        inspectionId={inspectionId}
-        targetId={targetId}
-        areaKey={areaKey}
-        questionKey={questionKey}
-        onCount={setMediaCount}
-      />
+          of truth for the count, reported up via onCount. Self-hides when empty.
+          Suppressed entirely when hideMedia — the caller (type='file' questions)
+          already mounts its own MediaGallery via MediaButtons. */}
+      {!hideMedia && (
+        <>
+          <MediaGallery
+            inspectionId={inspectionId}
+            targetId={targetId}
+            areaKey={areaKey}
+            questionKey={questionKey}
+            onCount={setMediaCount}
+          />
 
-      <input
-        ref={photoRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="sr-only"
-        onChange={(e) => onPick('photo', e.target.files?.[0])}
-      />
-      <input
-        ref={videoRef}
-        type="file"
-        accept="video/*"
-        capture="environment"
-        className="sr-only"
-        onChange={(e) => onPick('video', e.target.files?.[0])}
-      />
-      <input
-        ref={photoUploadRef}
-        type="file"
-        accept="image/*"
-        className="sr-only"
-        onChange={(e) => onPick('photo', e.target.files?.[0])}
-      />
-      <input
-        ref={videoUploadRef}
-        type="file"
-        accept="video/*"
-        className="sr-only"
-        onChange={(e) => onPick('video', e.target.files?.[0])}
-      />
+          <input
+            ref={photoRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="sr-only"
+            onChange={(e) => onPick('photo', e.target.files?.[0])}
+          />
+          <input
+            ref={videoRef}
+            type="file"
+            accept="video/*"
+            capture="environment"
+            className="sr-only"
+            onChange={(e) => onPick('video', e.target.files?.[0])}
+          />
+          <input
+            ref={photoUploadRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={(e) => onPick('photo', e.target.files?.[0])}
+          />
+          <input
+            ref={videoUploadRef}
+            type="file"
+            accept="video/*"
+            className="sr-only"
+            onChange={(e) => onPick('video', e.target.files?.[0])}
+          />
+        </>
+      )}
     </div>
   );
 }

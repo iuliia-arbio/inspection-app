@@ -293,33 +293,36 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
         </div>
       )}
 
-      {question.type === 'text' && !isLongText && (
-        <input
-          id={id}
-          ref={textInput.ref as (el: HTMLInputElement | null) => void}
-          disabled={isTranscribing}
-          className="rounded-md border border-gray-300 px-3 py-2 text-base disabled:bg-gray-50 disabled:opacity-60"
-          defaultValue={textInput.defaultValue}
-          onChange={(e) => textInput.onChange(e.target.value)}
-        />
-      )}
-      {question.type === 'text' && isLongText && (
-        <AutoGrowTextarea
-          id={id}
-          disabled={isTranscribing}
-          value={valueStr}
-          onChange={emitText}
-        />
-      )}
       {question.type === 'text' && (
-        <VoiceDictation
-          current={value == null ? '' : String(value)}
-          onStatusChange={setDictationStatus}
-          onAppended={(next) => {
-            onChange({ value: next, wasAcceptedAsIs: false });
-            pulseDebounced();
-          }}
-        />
+        <div className="relative">
+          {!isLongText && (
+            <input
+              id={id}
+              ref={textInput.ref as (el: HTMLInputElement | null) => void}
+              disabled={isTranscribing}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 pr-11 text-base disabled:bg-gray-50 disabled:opacity-60"
+              defaultValue={textInput.defaultValue}
+              onChange={(e) => textInput.onChange(e.target.value)}
+            />
+          )}
+          {isLongText && (
+            <AutoGrowTextarea
+              id={id}
+              disabled={isTranscribing}
+              value={valueStr}
+              onChange={emitText}
+              className="pr-11"
+            />
+          )}
+          <VoiceDictation
+            current={value == null ? '' : String(value)}
+            onStatusChange={setDictationStatus}
+            onAppended={(next) => {
+              onChange({ value: next, wasAcceptedAsIs: false });
+              pulseDebounced();
+            }}
+          />
+        </div>
       )}
       {question.type === 'number' && (
         <input
@@ -430,11 +433,13 @@ function AutoGrowTextarea({
   value,
   onChange,
   disabled,
+  className,
 }: {
   id: string;
   value: string;
   onChange: (next: string) => void;
   disabled?: boolean;
+  className?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement | null>(null);
   const resize = useCallback(() => {
@@ -462,7 +467,7 @@ function AutoGrowTextarea({
       id={id}
       rows={3}
       disabled={disabled}
-      className="min-h-[5.25rem] resize-none overflow-hidden rounded-md border border-gray-300 px-3 py-2 text-base disabled:bg-gray-50 disabled:opacity-60"
+      className={`min-h-[5.25rem] w-full resize-none overflow-hidden rounded-md border border-gray-300 px-3 py-2 text-base disabled:bg-gray-50 disabled:opacity-60 ${className ?? ''}`}
       defaultValue={echo.defaultValue}
       onChange={(e) => {
         echo.onChange(e.target.value);
@@ -504,7 +509,7 @@ function VoiceDictation({
     onStatusChange?.(status);
   }, [status, onStatusChange]);
   return (
-    <div className="flex justify-end">
+    <div className="absolute right-1.5 top-1.5">
       <VoiceDictationButton
         status={status}
         online={online}

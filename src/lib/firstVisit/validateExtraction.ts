@@ -3,6 +3,7 @@
 // where we guarantee the model's output is well-formed before it ever becomes a
 // suggestion: off-enum values are nulled, numbers coerced, junk dropped.
 import { buildExtractionSchema, questionForSlug } from './extractionSchema';
+import { isExclusiveOption } from './multiSelect';
 import type { FirstVisitQuestion } from './questions';
 
 export type AiField = { value: unknown; confidence: number | null };
@@ -43,14 +44,24 @@ function normalizeValue(
     if (!Array.isArray(raw)) return null;
     // allow_custom_options fields accept new values, so keep any non-empty
     // string rather than filtering to the preset option list.
+    let kept: string[];
     if (q.allow_custom_options) {
-      const kept = raw
+      kept = raw
         .filter((v): v is string => typeof v === 'string' && v.trim() !== '')
         .map((v) => v.trim());
-      return kept.length ? kept : null;
+    } else {
+      kept = raw.filter((v): v is string => typeof v === 'string' && q.options.includes(v));
+      if (kept.length !== raw.length) warnings.push(`${q.slug}: dropped off-list option(s)`);
     }
-    const kept = raw.filter((v) => typeof v === 'string' && q.options.includes(v));
-    if (kept.length !== raw.length) warnings.push(`${q.slug}: dropped off-list option(s)`);
+    // A clip can mention both an exclusive option ("None") and a concrete
+    // amenity/finding in the same breath. When both land here, the concrete
+    // selection is more informative, so keep it and drop the exclusive one.
+    const hasExclusive = kept.some(isExclusiveOption);
+    const hasNonExclusive = kept.some((v) => !isExclusiveOption(v));
+    if (hasExclusive && hasNonExclusive) {
+      warnings.push(`${q.slug}: dropped exclusive option in favor of concrete selections`);
+      kept = kept.filter((v) => !isExclusiveOption(v));
+    }
     return kept.length ? kept : null;
   }
   if (q.type === 'select') {

@@ -30,6 +30,7 @@ import { repeaterGroupMeta } from '@/lib/firstVisit/repeaterGroups';
 import { requiredVisible } from '@/lib/firstVisit/progress';
 import { track } from '@/lib/firstVisit/analytics';
 import { VoicePromptCard } from '@/components/firstVisit/SectionVoicePrompts';
+import { WifiSpeedTest } from '@/components/firstVisit/WifiSpeedTest';
 import { useSectionVoiceFill } from '@/lib/firstVisit/useSectionVoiceFill';
 import { promptsForPhase, voiceSummarySlug } from '@/data/section-voice-prompts';
 import { isAiSnapshot, unwrapAiSnapshot } from '@/lib/firstVisit/aiFill';
@@ -646,11 +647,11 @@ export function UnitSurvey({
       </div>
 
       <section key={phase.id} ref={sectionRef} className="mt-4 scroll-mt-20">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-0.5">
           <div className="text-sm font-medium uppercase tracking-wide text-gray-500">
             {phase.label}
           </div>
-          <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-600">
+          <span className="w-fit rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-600">
             {scopeLabel(scope)}
           </span>
         </div>
@@ -791,6 +792,17 @@ export function UnitSurvey({
               );
             }
 
+            // WS-Wifi: the download-speed question is the anchor for an inline
+            // "run speed test" widget (LibreSpeed, see WifiSpeedTest.tsx). It
+            // writes both the download and upload questions at once, so the
+            // inspector doesn't have to run a separate app and type numbers in
+            // by hand. Special-cased on slug rather than threaded through the
+            // generic renderer since it's the only question that fills a sibling.
+            const isWifiSpeedAnchor = q.slug === 'fv_wifi_download_speed_mbps';
+            const wifiUploadQuestion = isWifiSpeedAnchor
+              ? phase.questions.find((pq) => pq.slug === 'fv_wifi_upload_speed_mbps')
+              : undefined;
+
             return (
               <Fragment key={key}>
                 {voiceCardFor([q.slug])}
@@ -807,6 +819,16 @@ export function UnitSurvey({
                   onChange={onChange}
                   setNotes={setNotes}
                 />
+                {isWifiSpeedAnchor && (
+                  <WifiSpeedTest
+                    onResult={({ downloadMbps, uploadMbps }) => {
+                      void onChange(q, { value: Math.round(downloadMbps), wasAcceptedAsIs: false });
+                      if (wifiUploadQuestion) {
+                        void onChange(wifiUploadQuestion, { value: Math.round(uploadMbps), wasAcceptedAsIs: false });
+                      }
+                    }}
+                  />
+                )}
                 {anchored.map((fq) =>
                   renderAnchoredFile(fq, {
                     inspectionId,

@@ -331,7 +331,7 @@
     "notes": null,
     "slug": "fv_parking_nearby_options",
     "label": "Nearby parking options",
-    "description": "AI-generated from the address; PM validates/regenerates.",
+    "description": null,
     "scope": "location",
     "type": "text",
     "options": [],
@@ -436,17 +436,46 @@
     "scope": "location",
     "type": "select",
     "options": [
-      "Aufzug",
-      "Gemeinschafts Balkon/Terrasse",
-      "Gemeinschaftsgarten",
-      "Schwimmbad",
+      "Elevator",
+      "Shared balcony/terrace",
+      "Shared garden",
+      "Pool",
       "Sauna",
-      "Fitnessraum",
-      "Konferenzräume",
+      "Gym",
+      "Conference rooms",
       "Reception/Concierge",
       "None"
     ],
     "required": true,
+    "multi_select": true,
+    "allow_custom_options": true,
+    "phase_id": "3",
+    "phase_label": "Building exterior & parking"
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "fv_common_area",
+    "label": "Common areas / building facilities",
+    "description": null,
+    "scope": "location",
+    "type": "select",
+    "options": [
+      "Lobby",
+      "Rooftop",
+      "Courtyard",
+      "SmokingArea",
+      "Storage",
+      "Shared kitchen",
+      "Shared garden",
+      "Other",
+      "None"
+    ],
+    "required": false,
     "multi_select": true,
     "allow_custom_options": true,
     "phase_id": "3",
@@ -637,7 +666,6 @@
     "options": [
       "Main Gate",
       "Building Door",
-      "Apartment Door",
       "Other"
     ],
     "required": true,
@@ -694,7 +722,14 @@
     "required": false,
     "phase_id": "4",
     "phase_label": "Building access & check-in",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   {
     "mode": "data",
@@ -712,7 +747,14 @@
     "required": false,
     "phase_id": "4",
     "phase_label": "Building access & check-in",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   {
     "mode": "data",
@@ -730,7 +772,14 @@
     "required": false,
     "phase_id": "4",
     "phase_label": "Building access & check-in",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   {
     "mode": "data",
@@ -751,7 +800,14 @@
     "required": true,
     "phase_id": "4",
     "phase_label": "Building access & check-in",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   {
     "mode": "data",
@@ -773,7 +829,14 @@
     "required": false,
     "phase_id": "4",
     "phase_label": "Building access & check-in",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   {
     "mode": "data",
@@ -791,7 +854,14 @@
     "required": false,
     "phase_id": "4",
     "phase_label": "Building access & check-in",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   {
     "mode": "data",
@@ -807,6 +877,31 @@
     "type": "text",
     "options": [],
     "required": false,
+    "phase_id": "4",
+    "phase_label": "Building access & check-in",
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  {
+    "mode": "observe",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "fv_step_photo",
+    "label": "Photo of this check-in step",
+    "description": null,
+    "scope": "location",
+    "type": "file",
+    "options": [],
+    "required": true,
     "phase_id": "4",
     "phase_label": "Building access & check-in",
     "group_id": "checkin_step"
@@ -1353,35 +1448,6 @@
   {
     "mode": "data",
     "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "fv_common_area",
-    "label": "Common areas / building facilities",
-    "description": null,
-    "scope": "location",
-    "type": "select",
-    "options": [
-      "Lobby",
-      "Rooftop",
-      "Courtyard",
-      "SmokingArea",
-      "Storage",
-      "Shared kitchen",
-      "Shared garden",
-      "Other",
-      "None"
-    ],
-    "required": false,
-    "multi_select": true,
-    "allow_custom_options": true,
-    "phase_id": "5",
-    "phase_label": "Building infrastructure & services"
-  },
-  {
-    "mode": "data",
-    "repeater": false,
     "pms_target": "operationalInfo.cleaning",
     "status": "existing",
     "verdict": null,
@@ -1488,155 +1554,6 @@
     "multi_select": true,
     "phase_id": "6",
     "phase_label": "Cleaning & laundry"
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "fv_wifi_present",
-    "label": "Wi-Fi available?",
-    "description": "Gate: when \"No\", WiFi sub-questions collapse.",
-    "scope": "location",
-    "type": "boolean",
-    "options": [
-      "Yes",
-      "No"
-    ],
-    "required": true,
-    "phase_id": "7",
-    "phase_label": "WiFi"
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": "profile.wifiDetails.networkName",
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "fv_wifi_ssid",
-    "label": "WiFi network name (SSID)",
-    "description": null,
-    "scope": "location",
-    "type": "text",
-    "options": [],
-    "required": false,
-    "phase_id": "7",
-    "phase_label": "WiFi",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": "profile.wifiDetails.password",
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "fv_wifi_password",
-    "label": "WiFi password",
-    "description": null,
-    "scope": "location",
-    "type": "text",
-    "options": [],
-    "required": false,
-    "phase_id": "7",
-    "phase_label": "WiFi",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": "profile.wifiDetails.downloadSpeedMbps",
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "fv_wifi_download_speed_mbps",
-    "label": "WiFi download speed (Mbps)",
-    "description": null,
-    "scope": "location",
-    "type": "number",
-    "options": [],
-    "required": false,
-    "phase_id": "7",
-    "phase_label": "WiFi",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": "profile.wifiDetails.uploadSpeedMbps",
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "fv_wifi_upload_speed_mbps",
-    "label": "WiFi upload speed (Mbps)",
-    "description": null,
-    "scope": "location",
-    "type": "number",
-    "options": [],
-    "required": false,
-    "phase_id": "7",
-    "phase_label": "WiFi",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": "profile.wifiDetails.routerLocation",
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "fv_wifi_router_location",
-    "label": "WiFi router physical location",
-    "description": null,
-    "scope": "location",
-    "type": "text",
-    "options": [],
-    "required": false,
-    "phase_id": "7",
-    "phase_label": "WiFi",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": "profile.wifiDetails.guestRouterAccess",
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "fv_wifi_guest_router_access",
-    "label": "Guest access to router?",
-    "description": null,
-    "scope": "location",
-    "type": "boolean",
-    "options": [
-      "Yes",
-      "No"
-    ],
-    "required": false,
-    "phase_id": "7",
-    "phase_label": "WiFi",
-    "visible_when": {
-      "question": "fv_wifi_present",
-      "equals": true
-    }
   },
   {
     "mode": "data",
@@ -1938,28 +1855,6 @@
   {
     "mode": "data",
     "repeater": false,
-    "pms_target": "propertyCategory",
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "fv_apartment_category",
-    "label": "Apartment category",
-    "description": "Tiers anchored on finish quality, furnishing completeness, size and amenities — validate definitions with GX.",
-    "scope": "unit_category",
-    "type": "select",
-    "options": [
-      "Premium",
-      "Standard",
-      "Midscale",
-      "Below standard"
-    ],
-    "required": true,
-    "phase_id": "8",
-    "phase_label": "Unit identity"
-  },
-  {
-    "mode": "data",
-    "repeater": false,
     "pms_target": null,
     "status": "existing",
     "verdict": null,
@@ -2183,6 +2078,406 @@
     "status": "existing",
     "verdict": null,
     "notes": null,
+    "slug": "unit_step_name",
+    "label": "Check-in step name",
+    "description": "Free-text per step; repeatable — all per-step fields below repeat for each step.",
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": true,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step"
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_lock_type",
+    "label": "Lock type",
+    "description": null,
+    "scope": "unit_category",
+    "type": "select",
+    "options": [
+      "Smart Lock",
+      "Keypad",
+      "Ring To Open",
+      "Call To Open",
+      "Chip",
+      "Physical Key"
+    ],
+    "required": true,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step"
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_smart_lock_provider",
+    "label": "Smart lock provider",
+    "description": null,
+    "scope": "unit_category",
+    "type": "select",
+    "options": [
+      "Nuki",
+      "Akiles",
+      "Bold",
+      "RemoteLock",
+      "Salto",
+      "EVVA",
+      "Other"
+    ],
+    "required": false,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_smart_lock_device_id",
+    "label": "Smart lock device ID / serial",
+    "description": null,
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": false,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_lock_brand",
+    "label": "Lock brand / manufacturer",
+    "description": null,
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": false,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_lock_classification",
+    "label": "Lock classification",
+    "description": null,
+    "scope": "unit_category",
+    "type": "select",
+    "options": [
+      "Primary",
+      "Backup"
+    ],
+    "required": true,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_key_storage_method",
+    "label": "Key storage method",
+    "description": null,
+    "scope": "unit_category",
+    "type": "select",
+    "options": [
+      "Keybox",
+      "Locker",
+      "Human handover"
+    ],
+    "required": false,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_storage_brand",
+    "label": "Storage brand",
+    "description": null,
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": false,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_default_access_code",
+    "label": "Default access code",
+    "description": null,
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": false,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  {
+    "mode": "observe",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_photo",
+    "label": "Photo of this check-in step",
+    "description": null,
+    "scope": "unit_category",
+    "type": "file",
+    "options": [],
+    "required": true,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step"
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "fv_wifi_present",
+    "label": "Wi-Fi available?",
+    "description": "Gate: when \"No\", WiFi sub-questions collapse.",
+    "scope": "unit_category",
+    "type": "boolean",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "required": true,
+    "phase_id": "7",
+    "phase_label": "WiFi"
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": "profile.wifiDetails.networkName",
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "fv_wifi_ssid",
+    "label": "WiFi network name (SSID)",
+    "description": null,
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": false,
+    "phase_id": "7",
+    "phase_label": "WiFi",
+    "visible_when": {
+      "question": "fv_wifi_present",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": "profile.wifiDetails.password",
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "fv_wifi_password",
+    "label": "WiFi password",
+    "description": null,
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": false,
+    "phase_id": "7",
+    "phase_label": "WiFi",
+    "visible_when": {
+      "question": "fv_wifi_present",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": "profile.wifiDetails.downloadSpeedMbps",
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "fv_wifi_download_speed_mbps",
+    "label": "WiFi download speed (Mbps)",
+    "description": null,
+    "scope": "unit_category",
+    "type": "number",
+    "options": [],
+    "required": false,
+    "phase_id": "7",
+    "phase_label": "WiFi",
+    "visible_when": {
+      "question": "fv_wifi_present",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": "profile.wifiDetails.uploadSpeedMbps",
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "fv_wifi_upload_speed_mbps",
+    "label": "WiFi upload speed (Mbps)",
+    "description": null,
+    "scope": "unit_category",
+    "type": "number",
+    "options": [],
+    "required": false,
+    "phase_id": "7",
+    "phase_label": "WiFi",
+    "visible_when": {
+      "question": "fv_wifi_present",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": "profile.wifiDetails.routerLocation",
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "fv_wifi_router_location",
+    "label": "WiFi router physical location",
+    "description": null,
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": false,
+    "phase_id": "7",
+    "phase_label": "WiFi",
+    "visible_when": {
+      "question": "fv_wifi_present",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": "profile.wifiDetails.guestRouterAccess",
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "fv_wifi_guest_router_access",
+    "label": "Guest access to router?",
+    "description": null,
+    "scope": "unit_category",
+    "type": "boolean",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "required": false,
+    "phase_id": "7",
+    "phase_label": "WiFi",
+    "visible_when": {
+      "question": "fv_wifi_present",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
     "slug": "fv_furniture_status",
     "label": "Furnished to Arbio standard?",
     "description": "Arbio standard: required furniture set (bed, seating, dining, storage), condition/quality, completeness vs the checklist — validate with GX.",
@@ -2195,8 +2490,8 @@
       "No overhaul"
     ],
     "required": true,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues"
+    "phase_id": "11",
+    "phase_label": "Unit condition, appliances & amenities"
   },
   {
     "mode": "data",
@@ -2216,8 +2511,8 @@
       "Significant additions"
     ],
     "required": true,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues"
+    "phase_id": "11",
+    "phase_label": "Unit condition, appliances & amenities"
   },
   {
     "mode": "data",
@@ -2238,248 +2533,8 @@
       "Needs renovation"
     ],
     "required": true,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues"
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "fv_issues_found",
-    "label": "Any issues found in the unit?",
-    "description": "Gate for the unified issue log.",
-    "scope": "unit_category",
-    "type": "boolean",
-    "options": [
-      "Yes",
-      "No"
-    ],
-    "required": true,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues"
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_name",
-    "label": "Issue / item name",
-    "description": "Repeat the block per issue.",
-    "scope": "unit_category",
-    "type": "text",
-    "options": [],
-    "required": true,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_type",
-    "label": "Issue type",
-    "description": null,
-    "scope": "unit_category",
-    "type": "select",
-    "options": [
-      "Furniture",
-      "Equipment",
-      "Maintenance",
-      "Other"
-    ],
-    "required": true,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_location",
-    "label": "Location in unit",
-    "description": null,
-    "scope": "unit_category",
-    "type": "select",
-    "options": [
-      "Kitchen",
-      "Bathroom",
-      "Bedroom",
-      "Living room",
-      "Hallway",
-      "Balcony",
-      "Building/common",
-      "Other"
-    ],
-    "required": false,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_resolution",
-    "label": "Resolution",
-    "description": null,
-    "scope": "unit_category",
-    "type": "select",
-    "options": [
-      "Buy",
-      "Fix",
-      "Replace",
-      "Monitor"
-    ],
-    "required": true,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_quantity",
-    "label": "Quantity",
-    "description": null,
-    "scope": "unit_category",
-    "type": "number",
-    "options": [],
-    "required": false,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_cost_estimate_eur",
-    "label": "Cost estimate (€)",
-    "description": null,
-    "scope": "unit_category",
-    "type": "number",
-    "options": [],
-    "required": false,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_urgency",
-    "label": "Urgency",
-    "description": null,
-    "scope": "unit_category",
-    "type": "select",
-    "options": [
-      "Blocks go-live",
-      "Nice-to-have"
-    ],
-    "required": false,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  {
-    "mode": "observe",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_media",
-    "label": "Photo / video of issue",
-    "description": null,
-    "scope": "unit_category",
-    "type": "file",
-    "options": [],
-    "required": true,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
-  },
-  {
-    "mode": "data",
-    "repeater": false,
-    "pms_target": null,
-    "status": "existing",
-    "verdict": null,
-    "notes": null,
-    "slug": "issue_notes",
-    "label": "Issue notes",
-    "description": null,
-    "scope": "unit_category",
-    "type": "text",
-    "options": [],
-    "required": false,
-    "phase_id": "10",
-    "phase_label": "Unit condition & issues",
-    "group_id": "issue",
-    "visible_when": {
-      "question": "fv_issues_found",
-      "equals": true
-    }
+    "phase_id": "11",
+    "phase_label": "Unit condition, appliances & amenities"
   },
   {
     "mode": "data",
@@ -2499,7 +2554,7 @@
     ],
     "required": false,
     "phase_id": "11",
-    "phase_label": "Unit appliances & amenities"
+    "phase_label": "Unit condition, appliances & amenities"
   },
   {
     "mode": "data",
@@ -2516,7 +2571,7 @@
     "options": [],
     "required": false,
     "phase_id": "11",
-    "phase_label": "Unit appliances & amenities",
+    "phase_label": "Unit condition, appliances & amenities",
     "group_id": "item",
     "visible_when": {
       "question": "fv_items_to_log",
@@ -2542,7 +2597,7 @@
     ],
     "required": false,
     "phase_id": "11",
-    "phase_label": "Unit appliances & amenities",
+    "phase_label": "Unit condition, appliances & amenities",
     "group_id": "item",
     "visible_when": {
       "question": "fv_items_to_log",
@@ -2564,7 +2619,7 @@
     "options": [],
     "required": false,
     "phase_id": "11",
-    "phase_label": "Unit appliances & amenities",
+    "phase_label": "Unit condition, appliances & amenities",
     "group_id": "item",
     "visible_when": {
       "question": "fv_items_to_log",
@@ -2586,7 +2641,7 @@
     "options": [],
     "required": false,
     "phase_id": "11",
-    "phase_label": "Unit appliances & amenities",
+    "phase_label": "Unit condition, appliances & amenities",
     "group_id": "item",
     "visible_when": {
       "question": "fv_items_to_log",
@@ -2608,7 +2663,7 @@
     "options": [],
     "required": false,
     "phase_id": "11",
-    "phase_label": "Unit appliances & amenities",
+    "phase_label": "Unit condition, appliances & amenities",
     "group_id": "item",
     "visible_when": {
       "question": "fv_items_to_log",
@@ -2635,7 +2690,7 @@
     ],
     "required": false,
     "phase_id": "11",
-    "phase_label": "Unit appliances & amenities",
+    "phase_label": "Unit condition, appliances & amenities",
     "group_id": "item",
     "visible_when": {
       "question": "fv_items_to_log",
@@ -2657,7 +2712,7 @@
     "options": [],
     "required": false,
     "phase_id": "11",
-    "phase_label": "Unit appliances & amenities",
+    "phase_label": "Unit condition, appliances & amenities",
     "group_id": "item",
     "visible_when": {
       "question": "fv_items_to_log",
@@ -3028,6 +3083,246 @@
     "required": false,
     "phase_id": "14",
     "phase_label": "Unit photos & videos"
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "fv_issues_found",
+    "label": "Any issues found in the unit?",
+    "description": "Gate for the unified issue log.",
+    "scope": "unit_category",
+    "type": "boolean",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "required": true,
+    "phase_id": "17",
+    "phase_label": "Unit issue log"
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_name",
+    "label": "Issue / item name",
+    "description": "Repeat the block per issue.",
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": true,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_type",
+    "label": "Issue type",
+    "description": null,
+    "scope": "unit_category",
+    "type": "select",
+    "options": [
+      "Furniture",
+      "Equipment",
+      "Maintenance",
+      "Other"
+    ],
+    "required": true,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_location",
+    "label": "Location in unit",
+    "description": null,
+    "scope": "unit_category",
+    "type": "select",
+    "options": [
+      "Kitchen",
+      "Bathroom",
+      "Bedroom",
+      "Living room",
+      "Hallway",
+      "Balcony",
+      "Building/common",
+      "Other"
+    ],
+    "required": false,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_resolution",
+    "label": "Resolution",
+    "description": null,
+    "scope": "unit_category",
+    "type": "select",
+    "options": [
+      "Buy",
+      "Fix",
+      "Replace",
+      "Monitor"
+    ],
+    "required": true,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_quantity",
+    "label": "Quantity",
+    "description": null,
+    "scope": "unit_category",
+    "type": "number",
+    "options": [],
+    "required": false,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_cost_estimate_eur",
+    "label": "Cost estimate (€)",
+    "description": null,
+    "scope": "unit_category",
+    "type": "number",
+    "options": [],
+    "required": false,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_urgency",
+    "label": "Urgency",
+    "description": null,
+    "scope": "unit_category",
+    "type": "select",
+    "options": [
+      "Blocks go-live",
+      "Nice-to-have"
+    ],
+    "required": false,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  {
+    "mode": "observe",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_media",
+    "label": "Photo / video of issue",
+    "description": null,
+    "scope": "unit_category",
+    "type": "file",
+    "options": [],
+    "required": true,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "issue_notes",
+    "label": "Issue notes",
+    "description": null,
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": false,
+    "phase_id": "17",
+    "phase_label": "Unit issue log",
+    "group_id": "issue",
+    "visible_when": {
+      "question": "fv_issues_found",
+      "equals": true
+    }
   },
   {
     "mode": "data",
