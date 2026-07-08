@@ -107,4 +107,47 @@ describe('AttachAffordance', () => {
       await screen.findByRole('button', { name: /attach note, photo, or video/i }),
     ).toBeInTheDocument();
   });
+
+  describe('hideMedia', () => {
+    it('does not render photo/video buttons or the gallery when hideMedia is true', async () => {
+      await localDb.media.bulkPut([makeMedia({ id: 'm-photo', kind: 'photo' })]);
+
+      render(
+        <AttachAffordance
+          inspectionId={INSPECTION}
+          targetId={TARGET}
+          areaKey={AREA}
+          questionKey={QUESTION}
+          notes="an existing note keeps the panel expanded"
+          onNotesChange={() => {}}
+          hideMedia
+        />,
+      );
+
+      // notes is non-empty so the panel starts expanded (not the compact
+      // "+ Attach" trigger) — assert the media affordances are absent while
+      // the note capability remains usable.
+      expect(await screen.findByPlaceholderText(/note/i)).toBeInTheDocument();
+      expect(screen.queryByText('📷 Photo')).not.toBeInTheDocument();
+      expect(screen.queryByText('🎥 Video')).not.toBeInTheDocument();
+      expect(screen.queryByText(/\d+ files?/i)).not.toBeInTheDocument();
+    });
+
+    it('renders photo/video buttons and the gallery by default', async () => {
+      await localDb.media.bulkPut([makeMedia({ id: 'm-photo', kind: 'photo' })]);
+
+      render(
+        <AttachAffordance
+          inspectionId={INSPECTION}
+          targetId={TARGET}
+          areaKey={AREA}
+          questionKey={QUESTION}
+          notes=""
+          onNotesChange={() => {}}
+        />,
+      );
+
+      await waitFor(() => expect(screen.getByText(/1 file/i)).toBeInTheDocument());
+    });
+  });
 });

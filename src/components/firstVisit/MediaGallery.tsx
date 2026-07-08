@@ -132,6 +132,23 @@ export function MediaGallery({
                   />
                 )}
               </button>
+              {row.uploaded_at ? (
+                <span
+                  aria-label="uploaded"
+                  title="Uploaded"
+                  className="absolute -left-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-[11px] leading-none text-white shadow"
+                >
+                  ✓
+                </span>
+              ) : (
+                <span
+                  aria-label="uploading"
+                  title="Uploading…"
+                  className="absolute -left-1.5 -top-1.5 flex h-5 w-5 animate-pulse items-center justify-center rounded-full bg-gray-400 text-[9px] leading-none text-white shadow"
+                >
+                  ⏳
+                </span>
+              )}
               <button
                 type="button"
                 tabIndex={-1}

@@ -647,11 +647,11 @@ export function UnitSurvey({
       </div>
 
       <section key={phase.id} ref={sectionRef} className="mt-4 scroll-mt-20">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-0.5">
           <div className="text-sm font-medium uppercase tracking-wide text-gray-500">
             {phase.label}
           </div>
-          <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-600">
+          <span className="w-fit rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-600">
             {scopeLabel(scope)}
           </span>
         </div>

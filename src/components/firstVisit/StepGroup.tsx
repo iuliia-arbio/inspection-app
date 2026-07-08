@@ -405,6 +405,7 @@ export function QuestionRow({
         answerId={answer?.id}
         notes={answer?.notes}
         onNotesChange={(n) => setNotes(question, n, stepIndex)}
+        hideMedia={question.type === 'file'}
       />
     </div>
   );
