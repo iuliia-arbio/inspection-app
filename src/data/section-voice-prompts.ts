@@ -337,6 +337,25 @@ export const SECTION_VOICE_PROMPTS: Record<string, SectionPrompt[]> = {
       ],
     },
   ],
+
+  // 16 · Building condition & issues
+  '16': [
+    {
+      id: 'p16_issues',
+      label:
+        'Go issue by issue — for each: what it is, the type, the area of the building, how to resolve it, quantity, rough cost, how urgent, and any notes.',
+      target_slugs: [
+        'prop_issue_name',
+        'prop_issue_type',
+        'prop_issue_area',
+        'prop_issue_resolution',
+        'prop_issue_quantity',
+        'prop_issue_cost_estimate_eur',
+        'prop_issue_urgency',
+        'prop_issue_notes',
+      ],
+    },
+  ],
 };
 
 export function promptsForPhase(phaseId: string): SectionPrompt[] {
