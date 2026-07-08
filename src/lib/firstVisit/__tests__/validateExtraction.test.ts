@@ -120,4 +120,20 @@ describe('validateExtraction — custom multi-select options', () => {
     );
     expect(r.singles.fv_neighbourhood_vibe_tags?.value ?? null).toBeNull();
   });
+
+  it('drops the exclusive option when AI extraction returns both "None" and a real value', () => {
+    const r = validateExtraction(
+      {
+        singles: {
+          fv_building_amenities_verify: { value: ['None', 'Pool'], confidence: 0.8 },
+        },
+        items: [],
+      },
+      ['fv_building_amenities_verify'],
+    );
+    expect(r.singles.fv_building_amenities_verify.value).toEqual(['Pool']);
+    expect(
+      r.warnings.some((w) => w.includes('fv_building_amenities_verify')),
+    ).toBe(true);
+  });
 });
