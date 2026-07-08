@@ -52,6 +52,14 @@ describe('isVisible — conditional branching predicate', () => {
       expect(isVisible(r, m([['g', 'Other']]))).toBe(true);
       expect(isVisible(r, m([]))).toBe(true);
     });
+    it('hides lock detail fields when access has no lock (Ring To Open)', () => {
+      const r: VisibleWhen = { question: 'fv_step_lock_type', not_in: ['Ring To Open', 'Call To Open'] };
+      expect(isVisible(r, m([['fv_step_lock_type', 'Ring To Open']]))).toBe(false);
+    });
+    it('shows lock detail fields when access uses a real lock (Smart Lock)', () => {
+      const r: VisibleWhen = { question: 'fv_step_lock_type', not_in: ['Ring To Open', 'Call To Open'] };
+      expect(isVisible(r, m([['fv_step_lock_type', 'Smart Lock']]))).toBe(true);
+    });
   });
 
   describe('multi-select controllers (array answers)', () => {

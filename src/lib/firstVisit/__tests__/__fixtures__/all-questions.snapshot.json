@@ -666,7 +666,6 @@
     "options": [
       "Main Gate",
       "Building Door",
-      "Apartment Door",
       "Other"
     ],
     "required": true,
@@ -723,7 +722,14 @@
     "required": false,
     "phase_id": "4",
     "phase_label": "Building access & check-in",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   {
     "mode": "data",
@@ -741,7 +747,14 @@
     "required": false,
     "phase_id": "4",
     "phase_label": "Building access & check-in",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   {
     "mode": "data",
@@ -759,7 +772,14 @@
     "required": false,
     "phase_id": "4",
     "phase_label": "Building access & check-in",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   {
     "mode": "data",
@@ -780,7 +800,14 @@
     "required": true,
     "phase_id": "4",
     "phase_label": "Building access & check-in",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   {
     "mode": "data",
@@ -802,7 +829,14 @@
     "required": false,
     "phase_id": "4",
     "phase_label": "Building access & check-in",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   {
     "mode": "data",
@@ -820,7 +854,14 @@
     "required": false,
     "phase_id": "4",
     "phase_label": "Building access & check-in",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   {
     "mode": "data",
@@ -836,6 +877,31 @@
     "type": "text",
     "options": [],
     "required": false,
+    "phase_id": "4",
+    "phase_label": "Building access & check-in",
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  {
+    "mode": "observe",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "fv_step_photo",
+    "label": "Photo of this check-in step",
+    "description": null,
+    "scope": "location",
+    "type": "file",
+    "options": [],
+    "required": true,
     "phase_id": "4",
     "phase_label": "Building access & check-in",
     "group_id": "checkin_step"
@@ -2004,6 +2070,257 @@
     "required": false,
     "phase_id": "9",
     "phase_label": "Unit capacity"
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_name",
+    "label": "Check-in step name",
+    "description": "Free-text per step; repeatable — all per-step fields below repeat for each step.",
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": true,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step"
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_lock_type",
+    "label": "Lock type",
+    "description": null,
+    "scope": "unit_category",
+    "type": "select",
+    "options": [
+      "Smart Lock",
+      "Keypad",
+      "Ring To Open",
+      "Call To Open",
+      "Chip",
+      "Physical Key"
+    ],
+    "required": true,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step"
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_smart_lock_provider",
+    "label": "Smart lock provider",
+    "description": null,
+    "scope": "unit_category",
+    "type": "select",
+    "options": [
+      "Nuki",
+      "Akiles",
+      "Bold",
+      "RemoteLock",
+      "Salto",
+      "EVVA",
+      "Other"
+    ],
+    "required": false,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_smart_lock_device_id",
+    "label": "Smart lock device ID / serial",
+    "description": null,
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": false,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_lock_brand",
+    "label": "Lock brand / manufacturer",
+    "description": null,
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": false,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_lock_classification",
+    "label": "Lock classification",
+    "description": null,
+    "scope": "unit_category",
+    "type": "select",
+    "options": [
+      "Primary",
+      "Backup"
+    ],
+    "required": true,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_key_storage_method",
+    "label": "Key storage method",
+    "description": null,
+    "scope": "unit_category",
+    "type": "select",
+    "options": [
+      "Keybox",
+      "Locker",
+      "Human handover"
+    ],
+    "required": false,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_storage_brand",
+    "label": "Storage brand",
+    "description": null,
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": false,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_default_access_code",
+    "label": "Default access code",
+    "description": null,
+    "scope": "unit_category",
+    "type": "text",
+    "options": [],
+    "required": false,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  {
+    "mode": "observe",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "unit_step_photo",
+    "label": "Photo of this check-in step",
+    "description": null,
+    "scope": "unit_category",
+    "type": "file",
+    "options": [],
+    "required": true,
+    "phase_id": "18",
+    "phase_label": "Unit check-in — apartment door",
+    "group_id": "unit_checkin_step"
   },
   {
     "mode": "data",

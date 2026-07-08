@@ -106,30 +106,83 @@ export const QUESTION_STRUCTURE: StructureOverlay = {
   },
   "fv_step_smart_lock_provider": {
     "pms_target": "accessInfo.checkInSteps.lock.provider",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   "fv_step_smart_lock_device_id": {
     "pms_target": "accessInfo.checkInSteps.lock.externalId",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   "fv_step_lock_brand": {
     "pms_target": "accessInfo.checkInSteps.lock.brand",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   "fv_step_lock_classification": {
     "pms_target": "accessInfo.checkInSteps.lock.classification",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   "fv_step_key_storage_method": {
     "pms_target": "accessInfo.checkInSteps.lock.storageType",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   "fv_step_storage_brand": {
     "pms_target": "accessInfo.checkInSteps.lock.storageBrand",
-    "group_id": "checkin_step"
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
   },
   "fv_step_default_access_code": {
     "pms_target": "accessInfo.checkInSteps.lock.defaultCode",
+    "group_id": "checkin_step",
+    "visible_when": {
+      "question": "fv_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  "fv_step_photo": {
+    "mode": "observe",
     "group_id": "checkin_step"
   },
   "fv_video_checkin_walkthrough": {
@@ -379,6 +432,86 @@ export const QUESTION_STRUCTURE: StructureOverlay = {
   },
   "fv_capacity_max": {
     "pms_target": "property.maxOccupancy"
+  },
+  "unit_step_name": {
+    "group_id": "unit_checkin_step"
+  },
+  "unit_step_lock_type": {
+    "group_id": "unit_checkin_step"
+  },
+  "unit_step_smart_lock_provider": {
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  "unit_step_smart_lock_device_id": {
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  "unit_step_lock_brand": {
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  "unit_step_lock_classification": {
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  "unit_step_key_storage_method": {
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  "unit_step_storage_brand": {
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  "unit_step_default_access_code": {
+    "group_id": "unit_checkin_step",
+    "visible_when": {
+      "question": "unit_step_lock_type",
+      "not_in": [
+        "Ring To Open",
+        "Call To Open"
+      ]
+    }
+  },
+  "unit_step_photo": {
+    "mode": "observe",
+    "group_id": "unit_checkin_step"
   },
   "fv_wifi_ssid": {
     "pms_target": "profile.wifiDetails.networkName",

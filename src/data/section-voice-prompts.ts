@@ -351,6 +351,24 @@ export const SECTION_VOICE_PROMPTS: Record<string, SectionPrompt[]> = {
       ],
     },
   ],
+
+  // 18 · Unit check-in — apartment door
+  '18': [
+    {
+      id: 'p18_checkin_step',
+      label:
+        'Walk through the apartment door check-in — the step name, the lock type and provider, the lock brand, whether it is primary or backup, and how keys are stored.',
+      target_slugs: [
+        'unit_step_name',
+        'unit_step_lock_type',
+        'unit_step_smart_lock_provider',
+        'unit_step_lock_brand',
+        'unit_step_lock_classification',
+        'unit_step_key_storage_method',
+        'unit_step_storage_brand',
+      ],
+    },
+  ],
 };
 
 export function promptsForPhase(phaseId: string): SectionPrompt[] {
