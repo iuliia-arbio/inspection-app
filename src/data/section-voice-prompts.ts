@@ -205,13 +205,15 @@ export const SECTION_VOICE_PROMPTS: Record<string, SectionPrompt[]> = {
     {
       id: 'p8_identity',
       label:
-        'Identify the unit — its floor, number or location, the unit type, and whether it has a balcony and how many.',
+        'Identify the unit — its floor, number or location, the unit type, and whether it has a balcony or terrace and how many.',
       target_slugs: [
         'fv_unit_floor_number',
         'fv_unit_location_in_building',
         'fv_unit_type_check',
         'fv_unit_balcony_present',
         'fv_unit_balconies_count',
+        'fv_unit_terrace_present',
+        'fv_unit_terraces_count',
       ],
     },
     {

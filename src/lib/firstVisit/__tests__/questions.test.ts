@@ -22,8 +22,10 @@ describe('first-visit question config', () => {
     // fv_step_photo field added to the building check-in step group (145).
     // +1 unit_category phase (Unit check-in — apartment door, id 18) added a
     // 10-question per-unit twin of the building check-in group (155).
+    // +2 terrace questions in Unit identity (present gate + count, mirroring
+    // the balcony pair) from 2026-07-09 field feedback (157).
     expect(CONFIG_META.counts.phases).toBe(17);
-    expect(CONFIG_META.counts.questions).toBe(155);
+    expect(CONFIG_META.counts.questions).toBe(157);
   });
 
   it('every question has a known scope', () => {

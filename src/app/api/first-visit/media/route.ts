@@ -10,6 +10,9 @@ const BUCKETS: Record<string, string> = {
 
 const SIGNED_URL_TTL_S = 3600;
 
+const THUMB = { width: 200, height: 200, resize: 'contain' as const };
+const VIEW = { width: 1080, height: 1080, resize: 'contain' as const };
+
 // Lists an inspection's media with signed download URLs so a device that
 // didn't capture the files (other staff, restored device) can still view
 // them. Blobs stay in storage — at ~5MB per photo, downloading them into
@@ -28,12 +31,39 @@ export async function GET(req: Request) {
     .eq('inspection_id', inspection_id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Sign per bucket in one batch each; a row whose object went missing gets
-  // url:null rather than failing the whole listing.
+  // Photos: sign a small thumbnail + a fit-to-screen view via image transforms.
+  // The batch signer can't transform, so photos are signed per-file. Full-res
+  // originals are never sent to the client (they OOM mobile Chrome on decode).
+  const photoUrls = new Map<string, { thumb: string | null; view: string | null }>();
+  await Promise.all(
+    (rows ?? [])
+      .filter((r) => r.kind === 'photo' && r.storage_path)
+      .map(async (r) => {
+        const path = r.storage_path as string;
+        const [thumb, view] = await Promise.all([
+          supabase.storage.from(BUCKETS.photo).createSignedUrl(path, SIGNED_URL_TTL_S, { transform: THUMB }),
+          supabase.storage.from(BUCKETS.photo).createSignedUrl(path, SIGNED_URL_TTL_S, { transform: VIEW }),
+        ]);
+        // A failed sign degrades to a null URL for that photo, but log it so a
+        // systemic failure (e.g. image transforms disabled on the project) is
+        // visible server-side instead of silently blanking every photo.
+        if (thumb.error) console.warn(`fv-media: thumb sign failed for ${path}: ${thumb.error.message}`);
+        if (view.error) console.warn(`fv-media: view sign failed for ${path}: ${view.error.message}`);
+        photoUrls.set(path, {
+          thumb: thumb.data?.signedUrl ?? null,
+          view: view.data?.signedUrl ?? null,
+        });
+      }),
+  );
+
+  // Video/audio: batch-sign per bucket (no transform available for them). A row
+  // whose object went missing gets url:null rather than failing the listing.
   const urlByPath = new Map<string, string | null>();
-  for (const bucket of new Set((rows ?? []).map((r) => BUCKETS[r.kind]).filter(Boolean))) {
+  for (const bucket of new Set(
+    (rows ?? []).filter((r) => r.kind !== 'photo').map((r) => BUCKETS[r.kind]).filter(Boolean),
+  )) {
     const paths = (rows ?? [])
-      .filter((r) => BUCKETS[r.kind] === bucket && r.storage_path)
+      .filter((r) => r.kind !== 'photo' && BUCKETS[r.kind] === bucket && r.storage_path)
       .map((r) => r.storage_path as string);
     if (paths.length === 0) continue;
     const { data: signed, error: signErr } = await supabase.storage
@@ -44,17 +74,28 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({
-    media: (rows ?? []).map((r) => ({
-      id: r.id,
-      inspection_id: r.inspection_id,
-      target_id: r.target_id,
-      answer_id: r.answer_id,
-      area_key: r.area_key,
-      question_key: r.question_key,
-      kind: r.kind,
-      captured_at: r.captured_at,
-      url: r.storage_path ? urlByPath.get(r.storage_path) ?? null : null,
-    })),
+    media: (rows ?? []).map((r) => {
+      const base = {
+        id: r.id,
+        inspection_id: r.inspection_id,
+        target_id: r.target_id,
+        answer_id: r.answer_id,
+        area_key: r.area_key,
+        question_key: r.question_key,
+        kind: r.kind,
+        captured_at: r.captured_at,
+      };
+      if (r.kind === 'photo') {
+        const u = r.storage_path ? photoUrls.get(r.storage_path) : undefined;
+        return { ...base, url: null, thumb_url: u?.thumb ?? null, view_url: u?.view ?? null };
+      }
+      return {
+        ...base,
+        url: r.storage_path ? urlByPath.get(r.storage_path) ?? null : null,
+        thumb_url: null,
+        view_url: null,
+      };
+    }),
   });
 }
 

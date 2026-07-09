@@ -1058,6 +1058,8 @@
             "Elevator",
             "Basement",
             "Courtyard",
+            "Balcony",
+            "Terrace",
             "Exterior",
             "Other"
           ],
@@ -1201,6 +1203,31 @@
         {
           "slug": "fv_unit_balconies_count",
           "label": "Number of balconies",
+          "description": null,
+          "scope": "unit_category",
+          "type": "number",
+          "options": [],
+          "required": false,
+          "phase_id": "8",
+          "phase_label": "Unit identity"
+        },
+        {
+          "slug": "fv_unit_terrace_present",
+          "label": "Is there a terrace?",
+          "description": "Gate: when \"No\", terrace count collapses.",
+          "scope": "unit_category",
+          "type": "boolean",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true,
+          "phase_id": "8",
+          "phase_label": "Unit identity"
+        },
+        {
+          "slug": "fv_unit_terraces_count",
+          "label": "Number of terraces",
           "description": null,
           "scope": "unit_category",
           "type": "number",
@@ -2022,6 +2049,7 @@
             "Living room",
             "Hallway",
             "Balcony",
+            "Terrace",
             "Building/common",
             "Other"
           ],
@@ -2175,7 +2203,7 @@
           "scope": "unit_category",
           "type": "text",
           "options": [],
-          "required": true,
+          "required": false,
           "phase_id": "15",
           "phase_label": "Final assessment / readiness"
         }

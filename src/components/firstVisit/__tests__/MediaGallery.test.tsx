@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MediaGallery } from '../MediaGallery';
 import { localDb, type LocalMedia } from '@/lib/firstVisit/db';
@@ -63,9 +63,12 @@ describe('MediaGallery', () => {
     await waitFor(() => {
       expect(screen.getByText(/2 files?/i)).toBeInTheDocument();
     });
-    // A photo uses an <img>, a video uses a <video>.
-    expect(screen.getByRole('img')).toBeInTheDocument();
-    expect(document.querySelector('video')).toBeTruthy();
+    // A photo uses an <img>, a video uses a <video>. Awaited: local rows show
+    // a placeholder for the frame before their object URLs exist.
+    await waitFor(() => {
+      expect(screen.getByRole('img')).toBeInTheDocument();
+      expect(document.querySelector('video')).toBeTruthy();
+    });
   });
 
   it('deleting an item drops the count and removes the row', async () => {
@@ -158,7 +161,9 @@ describe('MediaGallery', () => {
       question_key: QUESTION,
       kind: 'photo',
       captured_at: '2026-07-09T08:00:00.000Z',
-      url: 'https://hub/signed/remote-1.jpg',
+      url: null,
+      thumb_url: 'https://hub/signed/remote-1-thumb.jpg',
+      view_url: 'https://hub/signed/remote-1-view.jpg',
     };
 
     it('renders remote rows view-only and counts them', async () => {
@@ -186,10 +191,62 @@ describe('MediaGallery', () => {
       );
 
       await waitFor(() => expect(screen.getByText(/1 file/i)).toBeInTheDocument());
-      expect(screen.getByRole('img')).toHaveAttribute('src', remoteRow.url);
+      // Tile shows the small thumbnail, not a full-res image.
+      expect(screen.getByRole('img')).toHaveAttribute('src', remoteRow.thumb_url);
       // Remote rows are uploaded by definition and not deletable from here.
       expect(screen.getByLabelText(/^uploaded$/i)).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument();
+
+      // Tapping the tile opens the modal with the larger fit-to-screen view.
+      await userEvent.click(screen.getByRole('button', { name: /open photo/i }));
+      const dialog = screen.getByRole('dialog');
+      expect(within(dialog).getByAltText(/photo preview/i)).toHaveAttribute(
+        'src',
+        remoteRow.view_url,
+      );
+    });
+
+    it('renders a remote video as a placeholder, not an eager <video>', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            media: [
+              {
+                ...remoteRow,
+                id: 'remote-vid',
+                kind: 'video',
+                url: 'https://hub/signed/remote-vid.mp4',
+                thumb_url: null,
+                view_url: null,
+              },
+            ],
+          }),
+        }),
+      );
+
+      render(
+        <MediaGallery
+          inspectionId={INSPECTION}
+          targetId={TARGET}
+          areaKey={AREA}
+          questionKey={QUESTION}
+        />,
+      );
+
+      await waitFor(() => expect(screen.getByText(/1 file/i)).toBeInTheDocument());
+      // No <video> is mounted in the gallery for a remote video (avoids buffering).
+      expect(document.querySelector('video')).toBeNull();
+      // The tile is still openable.
+      expect(screen.getByRole('button', { name: /open video/i })).toBeInTheDocument();
+
+      // Opening the tile mounts the modal <video> streaming the signed URL,
+      // with preload=none so nothing buffers until playback.
+      await userEvent.click(screen.getByRole('button', { name: /open video/i }));
+      const modalVideo = within(screen.getByRole('dialog')).getByLabelText(/video preview/i);
+      expect(modalVideo).toHaveAttribute('src', 'https://hub/signed/remote-vid.mp4');
+      expect(modalVideo).toHaveAttribute('preload', 'none');
     });
 
     it('prefers the local copy when the same id exists on this device', async () => {
@@ -211,9 +268,13 @@ describe('MediaGallery', () => {
       );
 
       await waitFor(() => expect(screen.getByText(/1 file/i)).toBeInTheDocument());
-      // Local blob wins: renders the object URL, stays deletable.
-      expect(screen.getByRole('img')).toHaveAttribute('src', 'blob:mock');
-      expect(screen.getByRole('button', { name: /delete photo/i })).toBeInTheDocument();
+      // Local blob wins: renders the object URL, stays deletable. Awaited:
+      // local rows show a placeholder for the frame before their object URLs
+      // exist.
+      await waitFor(() => {
+        expect(screen.getByRole('img')).toHaveAttribute('src', 'blob:mock');
+        expect(screen.getByRole('button', { name: /delete photo/i })).toBeInTheDocument();
+      });
     });
   });
 });
