@@ -71,12 +71,12 @@ Low risk; edits to the authoritative source then regenerate. **All three are one
   ```
   (Copy the exact field shape/keys from the balcony rows at 227–230 — match `scope`,
   `phase`, `area`, and `required` conventions.)
-- ⚠️ **Hub dependency (BLOCKER for sync):** the submit route is generic per-slug and
-  skips slugs with no hub `data_points` registry entry (`if(!dp)continue`). A new
-  `fv_unit_terrace_present`/`_count` will collect locally and appear in CSV but will
-  **not** flow to `data_point_values` until a hub-repo registry migration adds those
-  definitions (level = unit_category). **Confirm scope:** app-only now (collect +
-  CSV) vs. also add the hub migration. Same consideration if #6 needs an enum.
+- **Hub registry IN SCOPE (decided 2026-07-09):** the submit route skips slugs with
+  no hub `data_points` registry entry (`if(!dp)continue`), so Batch B includes a
+  hub-repo registry migration adding `fv_unit_terrace_present` + `fv_unit_terrace_count`
+  (level = unit_category), applied live before/with the app deploy — same pattern as
+  migrations 070/071/075/081. Check whether #6's option rename needs a registry
+  touch (issue_location values are free-text into fv_issues, likely no).
 
 **Steps (TDD-ish):**
 1. Check the survey parity test exists (`scripts/gen-survey-snapshot`); note it will
@@ -244,11 +244,16 @@ Overlaps known batch-3 debt (see MEMORY.md open bugs). **Med-high risk; do last.
 **Approach:**
 - **Visibility:** SyncBadge shows a failing state when online with jobs that have
   `attempts>0`/`last_error`; surface a count + last error somewhere non-blocking.
-- **Submit safety:** gate submit on a drained outbox (or warn if undrained), and/or
-  make submit re-runnable so answers that land after submit still push to
-  `data_point_values` (today submit is one-shot on a submitted inspection → partial
-  loss). Confirm approach with Joshua before building — this touches the submit
-  contract.
+- **Submit safety (DECIDED 2026-07-09 — both):**
+  1. **Gate submit on a drained outbox** (primary): on Submit, drain first and only
+     enqueue the `submit` job once this inspection's pending answer jobs have landed;
+     if jobs are stuck, show "X answers haven't reached the hub yet" + retry instead
+     of silently submitting a partial visit.
+  2. **Make submit re-runnable** (safety net): allow re-running the submit route on
+     an already-submitted inspection — the `data_point_values` push is an upsert, so
+     a re-run heals late-arriving answers instead of losing them permanently.
+  Rationale: the gate prevents the failure; idempotent re-run recovers from anything
+  that slips past it (offline edge cases, days-later devices).
 
 **Tests:** SyncBadge failing state when online+errored; submit blocked/warned with
 pending jobs.
@@ -265,7 +270,8 @@ pending jobs.
 7. **Batch G (#1)** — sync visibility/submit safety (confirm approach first).
 
 ## Open items to confirm during planning
-- #2/#6 hub registry migration scope (app-only vs also hub-repo migration).
-- #11 C1 identity approach (adopt existing hub id per deal vs deterministic id).
+- ~~#2/#6 hub registry migration scope~~ — DECIDED: hub migration in scope for #2.
+- #11 C1 identity approach (adopt existing hub id per deal vs deterministic id) —
+  recommend adopting the existing hub id (safer with live data).
 - #3 auto-created unit default label ("Unit 1" recommended).
-- #1 submit-contract change (gate vs re-runnable) — needs Joshua sign-off.
+- ~~#1 submit-contract change~~ — DECIDED: gate on drained outbox + re-runnable submit.
