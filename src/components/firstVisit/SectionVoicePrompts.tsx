@@ -1,5 +1,7 @@
 'use client';
+import { useState } from 'react';
 import { VoiceDictationButton } from '@/components/firstVisit/VoiceDictationButton';
+import { QuestionRow } from '@/components/firstVisit/StepGroup';
 import type { SectionVoiceFill, VoiceFillSummary } from '@/lib/firstVisit/useSectionVoiceFill';
 import { voiceSummarySlug, type SectionPrompt } from '@/data/section-voice-prompts';
 import { VOICE_FILL_ENABLED } from '@/lib/firstVisit/featureFlags';
@@ -91,4 +93,25 @@ export function VoicePromptCard({
       )}
     </div>
   );
+}
+
+// The voice-captured summary is a nice-to-have detail, not something that
+// should dominate the section — collapse it to a small chip by default and
+// only mount the full editable QuestionRow once the inspector taps it.
+export function VoiceSummaryChip(props: React.ComponentProps<typeof QuestionRow>) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="self-start rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-200"
+      >
+        📝 Summary — tap to view
+      </button>
+    );
+  }
+
+  return <QuestionRow {...props} />;
 }

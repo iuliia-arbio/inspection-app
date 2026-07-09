@@ -14,7 +14,7 @@ import { useSurveyConfig } from '@/lib/firstVisit/SurveyConfigContext';
 import { RepeaterStub } from '@/components/firstVisit/PrefilledField';
 import { MediaButtons } from '@/components/firstVisit/MediaButtons';
 import { AttachAffordance } from '@/components/firstVisit/AttachAffordance';
-import { CopyFromUnitPicker } from '@/components/firstVisit/CopyFromUnitPicker';
+import { CopyFromUnitTrigger } from '@/components/firstVisit/CopyFromUnitTrigger';
 import { ProgressRing, isAnswered } from '@/components/firstVisit/ProgressRing';
 import { StepGroup, QuestionRow } from '@/components/firstVisit/StepGroup';
 import { localDb, type LocalAnswer } from '@/lib/firstVisit/db';
@@ -29,7 +29,7 @@ import { lookupHubValue, type HubSnapshot } from '@/lib/firstVisit/snapshot';
 import { repeaterGroupMeta } from '@/lib/firstVisit/repeaterGroups';
 import { requiredVisible } from '@/lib/firstVisit/progress';
 import { track } from '@/lib/firstVisit/analytics';
-import { VoicePromptCard } from '@/components/firstVisit/SectionVoicePrompts';
+import { VoicePromptCard, VoiceSummaryChip } from '@/components/firstVisit/SectionVoicePrompts';
 import { WifiSpeedTest } from '@/components/firstVisit/WifiSpeedTest';
 import { useSectionVoiceFill } from '@/lib/firstVisit/useSectionVoiceFill';
 import { promptsForPhase, voiceSummarySlug } from '@/data/section-voice-prompts';
@@ -208,20 +208,32 @@ export function UnitSurvey({
     await enqueue('answer_upsert', row);
   };
 
-  // Copy every answer from another unit in this same visit onto the current
-  // unit. Skips media, hub-suggestion snapshots, and skipped sentinel values.
-  // If the target already has answers, asks for confirmation.
-  const copyAnswersFromUnit = async (sourceUnitId: string) => {
+  // Copy answers from another unit in this same visit onto the current unit,
+  // scoped to one section (phase) at a time — pass questionKeys to copy only
+  // the hand-picked subset, or omit it to copy every meaningful answer this
+  // phase has on the source unit. Skips media, hub-suggestion snapshots, and
+  // skipped sentinel values. If the target already has answers in this phase,
+  // asks for confirmation.
+  const copyAnswersFromUnitForPhase = async (
+    sourceUnitId: string,
+    phaseId: string,
+    questionKeys?: string[],
+  ) => {
     if (scope !== 'unit_category') return;
     const sourceRows = await localDb.answers
       .where('target_id')
       .equals(sourceUnitId)
       .toArray();
     const meaningful = sourceRows.filter(
-      (r) => r.value !== null && r.value !== undefined && r.value !== '',
+      (r) =>
+        r.area_key === phaseId &&
+        r.value !== null &&
+        r.value !== undefined &&
+        r.value !== '' &&
+        (!questionKeys || questionKeys.includes(r.question_key)),
     );
     if (meaningful.length === 0) {
-      alert('That unit has no answers to copy yet.');
+      alert('That unit has no answers to copy in this section yet.');
       return;
     }
 
@@ -230,11 +242,11 @@ export function UnitSurvey({
       .equals(target.id)
       .toArray();
     const targetHasAny = targetExisting.some(
-      (r) => r.value !== null && r.value !== undefined && r.value !== '',
+      (r) => r.area_key === phaseId && r.value !== null && r.value !== undefined && r.value !== '',
     );
     if (targetHasAny) {
       const ok = confirm(
-        'This unit already has answers. Replace them with the copied values?',
+        'This section already has answers. Replace them with the copied values?',
       );
       if (!ok) return;
     }
@@ -277,6 +289,7 @@ export function UnitSurvey({
     track('unit_answers_copied', {
       source: sourceUnitId,
       target: target.id,
+      phase: phaseId,
       count: copied,
     });
 
@@ -533,7 +546,7 @@ export function UnitSurvey({
           <Fragment key={`vp-${p.id}`}>
             <VoicePromptCard prompt={p} phaseId={phase.id} fill={voiceFill} />
             {hasSummary && (
-              <QuestionRow
+              <VoiceSummaryChip
                 question={sq}
                 inspectionId={inspectionId}
                 targetId={target.id}
@@ -579,16 +592,6 @@ export function UnitSurvey({
         <h1 className="text-lg font-semibold">{target.label}</h1>
         <ProgressRing done={requiredStats.done} total={requiredStats.total} />
       </div>
-
-      {scope === 'unit_category' && (
-        <div className="mt-3">
-          <CopyFromUnitPicker
-            inspectionId={inspectionId}
-            currentUnitId={target.id}
-            onCopy={copyAnswersFromUnit}
-          />
-        </div>
-      )}
 
       {/* Sticky horizontal section strip */}
       <div className="sticky top-0 z-10 -mx-6 mt-3 bg-white px-6 pb-2 pt-1">
@@ -647,13 +650,26 @@ export function UnitSurvey({
       </div>
 
       <section key={phase.id} ref={sectionRef} className="mt-4 scroll-mt-20">
-        <div className="flex flex-col gap-0.5">
-          <div className="text-sm font-medium uppercase tracking-wide text-gray-500">
-            {phase.label}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-col gap-0.5">
+            <div className="text-sm font-medium uppercase tracking-wide text-gray-500">
+              {phase.label}
+            </div>
+            <span className="w-fit rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-600">
+              {scopeLabel(scope)}
+            </span>
           </div>
-          <span className="w-fit rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-600">
-            {scopeLabel(scope)}
-          </span>
+          {scope === 'unit_category' && (
+            <CopyFromUnitTrigger
+              inspectionId={inspectionId}
+              currentUnitId={target.id}
+              phaseId={phase.id}
+              phaseQuestions={phase.questions.map((q) => ({ slug: q.slug, label: q.label }))}
+              onCopy={(sourceUnitId, questionKeys) =>
+                copyAnswersFromUnitForPhase(sourceUnitId, phase.id, questionKeys)
+              }
+            />
+          )}
         </div>
         <div className="mt-3 flex flex-col gap-3">
           {buildRenderPlan(phase.questions).map((node) => {
