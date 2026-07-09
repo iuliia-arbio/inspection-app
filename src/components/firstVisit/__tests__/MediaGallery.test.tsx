@@ -63,9 +63,12 @@ describe('MediaGallery', () => {
     await waitFor(() => {
       expect(screen.getByText(/2 files?/i)).toBeInTheDocument();
     });
-    // A photo uses an <img>, a video uses a <video>.
-    expect(screen.getByRole('img')).toBeInTheDocument();
-    expect(document.querySelector('video')).toBeTruthy();
+    // A photo uses an <img>, a video uses a <video>. Awaited: local rows show
+    // a placeholder for the frame before their object URLs exist.
+    await waitFor(() => {
+      expect(screen.getByRole('img')).toBeInTheDocument();
+      expect(document.querySelector('video')).toBeTruthy();
+    });
   });
 
   it('deleting an item drops the count and removes the row', async () => {
