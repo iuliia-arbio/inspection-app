@@ -48,14 +48,15 @@ export type RestoreResult = {
   answers: number;
 };
 
-// Rebuilds this browser's local store from the hub's copy of the caller's
-// visits. Sync is one-way (device → hub), so a device that lost its
-// IndexedDB — in-app webview eviction, new phone, cleared site data — has no
-// other way back. Writes go straight into Dexie, never through enqueue(), so
-// a restore can't echo rows back into the outbox. Existing local rows are
-// never downgraded: an answer is only overwritten when the hub's copy is
-// strictly newer, and inspections/targets are only added, not replaced
-// (except a draft→submitted status upgrade). Media blobs are not restored.
+// Rebuilds this browser's local store from the hub's copy of ALL staff
+// visits — the visits list runs this on every load, so every device always
+// shows every visit and a device that lost its IndexedDB (in-app webview
+// eviction, new phone, cleared site data) heals itself. Writes go straight
+// into Dexie, never through enqueue(), so a restore can't echo rows back into
+// the outbox. Existing local rows are never downgraded: an answer is only
+// overwritten when the hub's copy is strictly newer, and inspections/targets
+// are only added, not replaced (except a draft→submitted status upgrade).
+// Media blobs are not restored.
 export async function restoreFromCloud(): Promise<RestoreResult> {
   const res = await fetch('/api/first-visit/restore');
   if (!res.ok) throw new Error(`restore failed (${res.status})`);
