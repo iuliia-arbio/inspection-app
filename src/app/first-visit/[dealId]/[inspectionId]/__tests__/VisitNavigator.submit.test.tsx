@@ -17,17 +17,19 @@ vi.mock('@/lib/firstVisit/sync', () => ({
 vi.mock('@/lib/firstVisit/analytics', () => ({ track: vi.fn() }));
 vi.mock('@/lib/firstVisit/export', () => ({ downloadInspectionZip: vi.fn() }));
 
+import { track } from '@/lib/firstVisit/analytics';
+
 const INSPECTION = 'insp-1';
 const DEAL = 'deal-1';
 
-async function seedProperty() {
+async function seedProperty(status: 'draft' | 'submitted' = 'draft') {
   await localDb.targets.clear();
   await localDb.answers.clear();
   await localDb.inspections.clear();
   await localDb.inspections.put({
     id: INSPECTION,
     deal_id: DEAL,
-    status: 'draft',
+    status,
   } as Parameters<typeof localDb.inspections.put>[0]);
   const prop: LocalTarget = {
     id: 'prop-1',
@@ -75,11 +77,49 @@ describe('VisitNavigator submit flow', () => {
     expect(within(dialog).getByText('Main Building')).toBeInTheDocument();
     expect(within(dialog).getAllByText(firstRequired.label).length).toBeGreaterThan(0);
 
+    // Reopen contract: the old lock copy is gone, the new promise is stated.
+    expect(within(dialog).queryByText(/will not be able to edit/i)).toBeNull();
+    expect(
+      within(dialog).getByText(/reopen and edit this visit at any time/i),
+    ).toBeInTheDocument();
+
     // Confirm submit → success state (the dialog's own submit button).
     fireEvent.click(within(dialog).getByRole('button', { name: 'Submit visit' }));
     await waitFor(() => expect(screen.getByText(/Visit submitted/i)).toBeInTheDocument());
 
     const updated = await localDb.inspections.get(INSPECTION);
     expect(updated?.status).toBe('submitted');
+  });
+
+  it('shows Re-submit for a submitted visit and reopen-friendly dialog copy', async () => {
+    await seedProperty('submitted');
+
+    render(
+      <VisitNavigator dealId={DEAL} inspectionId={INSPECTION} previewSnapshot={undefined} visitTitle="Test Visit" />,
+    );
+
+    // A submitted visit is reopenable: the page button reads Re-submit.
+    const btn = await screen.findByRole('button', { name: 'Re-submit visit' });
+    fireEvent.click(btn);
+
+    const dialog = await screen.findByRole('dialog');
+    // The old lock contract is gone:
+    expect(within(dialog).queryByText(/will not be able to edit/i)).toBeNull();
+    // The new contract is stated:
+    expect(
+      within(dialog).getByText(/reopen and edit this visit at any time/i),
+    ).toBeInTheDocument();
+
+    // Confirm re-submits (dialog button mirrors the page label).
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Re-submit visit' }));
+    await waitFor(() => expect(screen.getByText(/Visit submitted/i)).toBeInTheDocument());
+    // Success copy states reopenability instead of finality.
+    expect(screen.getByText(/reopen this visit later/i)).toBeInTheDocument();
+
+    // The analytics event distinguishes a re-submit.
+    expect(track).toHaveBeenCalledWith(
+      'submit_clicked',
+      expect.objectContaining({ inspection_id: INSPECTION, resubmit: true }),
+    );
   });
 });

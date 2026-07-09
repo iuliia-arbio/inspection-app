@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { localDb, type LocalAnswer, type LocalTarget } from '@/lib/firstVisit/db';
+import { localDb, type LocalAnswer, type LocalInspection, type LocalTarget } from '@/lib/firstVisit/db';
 import { enqueue, ensureInspectionQueued } from '@/lib/firstVisit/sync';
 import { useSyncEngine } from '@/lib/firstVisit/useSyncEngine';
 import { createHandlers } from '@/lib/firstVisit/handlers';
@@ -108,6 +108,11 @@ export default function VisitNavigator({
 }) {
   const [targets, setTargets] = useState<LocalTarget[]>([]);
   const [answers, setAnswers] = useState<LocalAnswer[]>([]);
+  // The inspection row drives the reopen UX: a submitted visit stays fully
+  // editable (local status stays 'submitted' — no flapping), and the submit
+  // affordance becomes "Re-submit" so the inspector knows they're updating
+  // the hub, not filing something new.
+  const [inspection, setInspection] = useState<LocalInspection | null>(null);
   const [snapshot, setSnapshot] = useState<RawSnapshot | null>(
     (previewSnapshot as RawSnapshot) ?? null,
   );
@@ -149,12 +154,20 @@ export default function VisitNavigator({
     setAnswers(rows);
   }, [inspectionId]);
 
+  const reloadInspection = useCallback(async () => {
+    setInspection((await localDb.inspections.get(inspectionId)) ?? null);
+  }, [inspectionId]);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- load on mount; matches existing first-visit effects
     void reloadTargets();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- load on mount
     void reloadAnswers();
-  }, [reloadTargets, reloadAnswers]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load on mount
+    void reloadInspection();
+  }, [reloadTargets, reloadAnswers, reloadInspection]);
+
+  const isResubmit = inspection?.status === 'submitted';
 
   useEffect(() => {
     if (previewSnapshot) return;
@@ -398,12 +411,17 @@ export default function VisitNavigator({
 
   const confirmSubmit = async () => {
     const missing = remainingByTarget().reduce((n, g) => n + g.questions.length, 0);
-    track('submit_clicked', { inspection_id: inspectionId, missing_required: missing });
+    track('submit_clicked', {
+      inspection_id: inspectionId,
+      missing_required: missing,
+      resubmit: isResubmit,
+    });
     await localDb.inspections.update(inspectionId, {
       status: 'submitted',
       submitted_at: new Date().toISOString(),
     });
     await enqueue('submit', { inspection_id: inspectionId });
+    await reloadInspection();
     syncNow().catch(() => {});
     setSubmitState('submitted');
   };
@@ -642,12 +660,13 @@ export default function VisitNavigator({
         onClick={() => setSubmitState('confirming')}
         className="mt-6 w-full rounded-md bg-black px-4 py-3 text-white"
       >
-        Submit visit
+        {isResubmit ? 'Re-submit visit' : 'Submit visit'}
       </button>
 
       {submitState !== 'idle' ? (
         <SubmitDialog
           state={submitState}
+          resubmit={isResubmit}
           remaining={remainingByTarget()}
           onConfirm={confirmSubmit}
           onCancel={() => setSubmitState('idle')}
@@ -661,18 +680,23 @@ export default function VisitNavigator({
 // visible-required questions grouped by target so the inspector knows exactly
 // what's still open (or confirms everything's done). After submit it shows a
 // clear success state so there's no ambiguity about whether it went through.
+// Submitted visits are reopenable (Batch C): the copy promises editability
+// and `resubmit` relabels the action for already-submitted visits.
 function SubmitDialog({
   state,
+  resubmit,
   remaining,
   onConfirm,
   onCancel,
 }: {
   state: 'confirming' | 'submitted';
+  resubmit: boolean;
   remaining: RemainingGroup[];
   onConfirm: () => void;
   onCancel: () => void;
 }) {
   const missing = remaining.reduce((n, g) => n + g.questions.length, 0);
+  const submitLabel = resubmit ? 'Re-submit visit' : 'Submit visit';
   return (
     <div
       role="dialog"
@@ -685,8 +709,8 @@ function SubmitDialog({
             <div className="text-2xl">✓</div>
             <h2 className="mt-2 text-lg font-semibold">Visit submitted</h2>
             <p className="mt-1 text-sm text-gray-600">
-              Your answers are saved and syncing to the hub. You can close this
-              page.
+              Your answers are saved and syncing to the hub. You can reopen
+              this visit later to make changes.
             </p>
             <button
               onClick={onCancel}
@@ -726,7 +750,8 @@ function SubmitDialog({
               </>
             )}
             <p className="mt-3 text-xs text-gray-500">
-              You will not be able to edit this visit after submitting.
+              You can reopen and edit this visit at any time — re-submitting
+              updates the hub with your latest answers.
             </p>
             <div className="mt-4 flex gap-2">
               <button
@@ -739,7 +764,7 @@ function SubmitDialog({
                 onClick={onConfirm}
                 className="flex-1 rounded-md bg-black px-4 py-2.5 text-sm font-medium text-white"
               >
-                Submit visit
+                {submitLabel}
               </button>
             </div>
           </>
