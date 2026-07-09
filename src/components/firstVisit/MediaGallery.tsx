@@ -2,13 +2,16 @@
 import { useEffect, useState } from 'react';
 import { useMediaCapture } from '@/lib/firstVisit/useMediaCapture';
 import { localDb, type LocalMedia } from '@/lib/firstVisit/db';
+import { getRemoteMedia, type RemoteMedia } from '@/lib/firstVisit/remoteMedia';
 
 // View / delete uploads for one (inspection, target, area, question?) tuple.
 // This is the SINGLE SOURCE OF TRUTH for the per-question file count: it loads
 // the matching media rows from Dexie, keeps them live via the media-table
 // hooks (the project deliberately avoids dexie-react-hooks), lets the inspector
 // SEE each file (the core complaint was an un-openable attachment), and DELETE
-// the wrong ones.
+// the wrong ones. Files captured on OTHER devices (visits are shared across
+// staff) render from hub storage via signed URLs — view-only: their blobs are
+// not on this device and deletion belongs to the device that owns them.
 
 export function MediaGallery({
   inspectionId,
@@ -28,6 +31,8 @@ export function MediaGallery({
 }) {
   const { remove } = useMediaCapture(inspectionId);
   const [rows, setRows] = useState<LocalMedia[]>([]);
+  // Media captured on other devices: hub metadata + signed URL, view-only.
+  const [remoteRows, setRemoteRows] = useState<RemoteMedia[]>([]);
   // Bumped by Dexie table hooks so the query re-runs when any sibling
   // component (AttachAffordance, MediaButtons) writes/deletes a media row.
   const [mediaRev, setMediaRev] = useState(0);
@@ -64,6 +69,22 @@ export function MediaGallery({
       );
       mine.sort((a, b) => a.captured_at.localeCompare(b.captured_at));
       setRows(mine);
+
+      // Remote listing for the same tuple, minus anything this device already
+      // has locally (the local copy renders from its blob and stays deletable).
+      const remote = await getRemoteMedia(inspectionId);
+      if (!alive) return;
+      const localIds = new Set(all.map((m) => m.id));
+      const theirs = remote.filter(
+        (m) =>
+          !localIds.has(m.id) &&
+          !!m.url &&
+          m.target_id === targetId &&
+          m.area_key === areaKey &&
+          (questionKey ? m.question_key === questionKey : true),
+      );
+      theirs.sort((a, b) => a.captured_at.localeCompare(b.captured_at));
+      setRemoteRows(theirs);
     })();
     return () => {
       alive = false;
@@ -73,8 +94,8 @@ export function MediaGallery({
   // Report the live count to any parent badge whenever rows change (initial
   // load, sibling writes via the table hooks, and optimistic deletes).
   useEffect(() => {
-    onCount?.(rows.length);
-  }, [rows, onCount]);
+    onCount?.(rows.length + remoteRows.length);
+  }, [rows, remoteRows, onCount]);
 
   // Manage object URLs: build one per row, revoke them when the rows change or
   // the component unmounts.
@@ -96,18 +117,37 @@ export function MediaGallery({
     if (openId === id) setOpenId(null);
   };
 
-  if (rows.length === 0) return null;
+  // One render list: this device's rows (blob object URLs, deletable) plus
+  // other devices' rows (signed URLs, view-only, uploaded by definition).
+  const items = [
+    ...rows.map((r) => ({
+      id: r.id,
+      kind: r.kind,
+      url: urls[r.id],
+      uploaded: !!r.uploaded_at,
+      deletable: true,
+    })),
+    ...remoteRows.map((r) => ({
+      id: r.id,
+      kind: r.kind,
+      url: r.url as string,
+      uploaded: true,
+      deletable: false,
+    })),
+  ];
 
-  const openRow = openId ? rows.find((r) => r.id === openId) : null;
+  if (items.length === 0) return null;
+
+  const openRow = openId ? items.find((r) => r.id === openId) : null;
 
   return (
     <div className="flex flex-col gap-1.5">
       <p className="text-[11px] text-gray-500">
-        {rows.length} file{rows.length === 1 ? '' : 's'}
+        {items.length} file{items.length === 1 ? '' : 's'}
       </p>
       <ul className="flex flex-wrap gap-2 p-0 m-0 list-none">
-        {rows.map((row) => {
-          const url = urls[row.id];
+        {items.map((row) => {
+          const url = row.url;
           return (
             <li key={row.id} className="relative">
               <button
@@ -132,7 +172,7 @@ export function MediaGallery({
                   />
                 )}
               </button>
-              {row.uploaded_at ? (
+              {row.uploaded ? (
                 <span
                   aria-label="uploaded"
                   title="Uploaded"
@@ -149,15 +189,17 @@ export function MediaGallery({
                   ⏳
                 </span>
               )}
-              <button
-                type="button"
-                tabIndex={-1}
-                onClick={() => onDelete(row.id)}
-                aria-label={`Delete ${row.kind}`}
-                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[11px] leading-none text-white shadow hover:bg-red-700"
-              >
-                ✕
-              </button>
+              {row.deletable && (
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => onDelete(row.id)}
+                  aria-label={`Delete ${row.kind}`}
+                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[11px] leading-none text-white shadow hover:bg-red-700"
+                >
+                  ✕
+                </button>
+              )}
             </li>
           );
         })}
@@ -177,7 +219,7 @@ export function MediaGallery({
           >
             {openRow.kind === 'video' ? (
               <video
-                src={urls[openRow.id]}
+                src={openRow.url}
                 controls
                 autoPlay
                 className="max-h-[80vh] max-w-full rounded"
@@ -185,7 +227,7 @@ export function MediaGallery({
               />
             ) : (
               <img
-                src={urls[openRow.id]}
+                src={openRow.url}
                 alt={`${openRow.kind} preview`}
                 className="max-h-[80vh] max-w-full rounded"
               />
