@@ -18,9 +18,26 @@ import { track } from './analytics';
 //   3. Create only when hub AND local have none. A simultaneous create on two
 //      devices can still race; the canonical rule reconverges every later
 //      selection onto one winner and the loser is cleaned up out-of-band.
-export async function resumeOrStartVisit(
-  dealId: string,
-): Promise<{ id: string; resumed: boolean }> {
+// In-flight memo: resolution includes a network round-trip, so a double-tap on
+// the deal row would otherwise run two concurrent resolutions that both see an
+// empty Dexie and mint two inspections — the exact dupe this module exists to
+// kill. Concurrent calls for the same deal share one promise.
+const inflight = new Map<string, Promise<{ id: string; resumed: boolean }>>();
+
+export function resumeOrStartVisit(dealId: string): Promise<{ id: string; resumed: boolean }> {
+  const pending = inflight.get(dealId);
+  if (pending) return pending;
+  const promise = doResumeOrStartVisit(dealId).finally(() => inflight.delete(dealId));
+  inflight.set(dealId, promise);
+  return promise;
+}
+
+// Test hook.
+export function clearResumeInflight() {
+  inflight.clear();
+}
+
+async function doResumeOrStartVisit(dealId: string): Promise<{ id: string; resumed: boolean }> {
   await restoreFromCloud().catch(() => {}); // offline / expired session → local-only
   const existing = await localDb.inspections.where('deal_id').equals(dealId).toArray();
   const canonical = pickCanonicalInspection(existing);

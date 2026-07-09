@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { localDb, type LocalInspection } from '../db';
-import { resumeOrStartVisit } from '../resumeOrStartVisit';
+import { resumeOrStartVisit, clearResumeInflight } from '../resumeOrStartVisit';
 import { restoreFromCloud } from '../restore';
 import { enqueue } from '../sync';
 
@@ -24,6 +24,7 @@ const insp = (
 
 describe('resumeOrStartVisit', () => {
   beforeEach(async () => {
+    clearResumeInflight();
     await localDb.inspections.clear();
     vi.mocked(restoreFromCloud).mockReset().mockResolvedValue({
       inspections: 0,
@@ -86,6 +87,24 @@ describe('resumeOrStartVisit', () => {
     expect(await localDb.inspections.count()).toBe(1);
     expect((await localDb.inspections.get(r.id))?.status).toBe('draft');
     expect(enqueue).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores inspections belonging to a different deal', async () => {
+    await localDb.inspections.put({
+      ...insp('other-1', 'submitted', '2026-06-01T00:00:00Z'),
+      deal_id: 'some-other-deal',
+    });
+    const r = await resumeOrStartVisit(DEAL);
+    expect(r.resumed).toBe(false);
+    expect(r.id).not.toBe('other-1');
+    expect((await localDb.inspections.get(r.id))?.deal_id).toBe(DEAL);
+  });
+
+  it('a concurrent double-tap resolves to ONE visit with ONE enqueue', async () => {
+    const [a, b] = await Promise.all([resumeOrStartVisit(DEAL), resumeOrStartVisit(DEAL)]);
+    expect(b.id).toBe(a.id);
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(await localDb.inspections.count()).toBe(1);
   });
 
   it('is idempotent on repeat selection', async () => {

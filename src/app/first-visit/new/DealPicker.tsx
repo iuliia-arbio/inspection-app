@@ -10,12 +10,22 @@ export default function DealPicker({ deals }: { deals: { id: string; name: strin
   const [name, setName] = useState('');
   const [formType, setFormType] = useState<'care' | 'greenfield'>('care');
   const [submitting, setSubmitting] = useState(false);
+  const [picking, setPicking] = useState<string | null>(null); // deal id being resolved
   const [error, setError] = useState<string | null>(null);
 
   const pickDeal = async (dealId: string, created: boolean) => {
-    const { id, resumed } = await resumeOrStartVisit(dealId);
-    track('deal_selected', { deal_id: dealId, created, resumed });
-    router.push(`/first-visit/${dealId}/${id}`);
+    setPicking(dealId);
+    setError(null);
+    try {
+      const { id, resumed } = await resumeOrStartVisit(dealId);
+      track('deal_selected', { deal_id: dealId, created, resumed });
+      router.push(`/first-visit/${dealId}/${id}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      throw e; // let the create path reset its own submitting state
+    } finally {
+      setPicking(null);
+    }
   };
 
   const create = async () => {
@@ -45,6 +55,7 @@ export default function DealPicker({ deals }: { deals: { id: string; name: strin
 
   return (
     <div className="mt-4 flex flex-col gap-4">
+      {error && !creating && <p className="text-xs text-red-600">{error}</p>}
       {deals.length === 0 ? (
         <p className="text-sm text-gray-500">No existing deals (or offline).</p>
       ) : (
@@ -52,11 +63,14 @@ export default function DealPicker({ deals }: { deals: { id: string; name: strin
           {deals.map((d) => (
             <li key={d.id}>
               <button
-                onClick={() => pickDeal(d.id, false)}
-                className="block w-full rounded border border-gray-200 p-3 text-left hover:bg-gray-50"
+                onClick={() => void pickDeal(d.id, false).catch(() => {})} // error already rendered via setError
+                disabled={picking !== null}
+                className="block w-full rounded border border-gray-200 p-3 text-left hover:bg-gray-50 disabled:opacity-50"
               >
                 <div className="text-sm font-medium">{d.name}</div>
-                <div className="text-xs text-gray-500">{d.id}</div>
+                <div className="text-xs text-gray-500">
+                  {picking === d.id ? 'Opening visit…' : d.id}
+                </div>
               </button>
             </li>
           ))}
