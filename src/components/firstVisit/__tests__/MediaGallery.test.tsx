@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MediaGallery } from '../MediaGallery';
 import { localDb, type LocalMedia } from '@/lib/firstVisit/db';
+import { clearRemoteMediaCache } from '@/lib/firstVisit/remoteMedia';
 
 const INSPECTION = 'insp-1';
 const TARGET = 'target-1';
@@ -30,10 +31,17 @@ describe('MediaGallery', () => {
       .fn()
       .mockReturnValue('blob:mock');
     (URL as unknown as { revokeObjectURL: () => void }).revokeObjectURL = vi.fn();
+    clearRemoteMediaCache();
+    // Remote listing is exercised in its own describe below; default to none.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ media: [] }) }),
+    );
     await localDb.media.clear();
   });
 
   afterEach(async () => {
+    vi.unstubAllGlobals();
     await localDb.media.clear();
   });
 
@@ -137,6 +145,75 @@ describe('MediaGallery', () => {
 
       expect(await screen.findByLabelText(/^uploaded$/i)).toBeInTheDocument();
       expect(screen.queryByLabelText(/uploading/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('remote media (captured on another device)', () => {
+    const remoteRow = {
+      id: 'remote-1',
+      inspection_id: INSPECTION,
+      target_id: TARGET,
+      answer_id: null,
+      area_key: AREA,
+      question_key: QUESTION,
+      kind: 'photo',
+      captured_at: '2026-07-09T08:00:00.000Z',
+      url: 'https://hub/signed/remote-1.jpg',
+    };
+
+    it('renders remote rows view-only and counts them', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            media: [
+              remoteRow,
+              // Different tuple — must not render here.
+              { ...remoteRow, id: 'remote-2', area_key: 'bathroom' },
+            ],
+          }),
+        }),
+      );
+
+      render(
+        <MediaGallery
+          inspectionId={INSPECTION}
+          targetId={TARGET}
+          areaKey={AREA}
+          questionKey={QUESTION}
+        />,
+      );
+
+      await waitFor(() => expect(screen.getByText(/1 file/i)).toBeInTheDocument());
+      expect(screen.getByRole('img')).toHaveAttribute('src', remoteRow.url);
+      // Remote rows are uploaded by definition and not deletable from here.
+      expect(screen.getByLabelText(/^uploaded$/i)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument();
+    });
+
+    it('prefers the local copy when the same id exists on this device', async () => {
+      await localDb.media.put(
+        makeMedia({ id: 'remote-1', kind: 'photo', uploaded_at: new Date().toISOString() }),
+      );
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({ ok: true, json: async () => ({ media: [remoteRow] }) }),
+      );
+
+      render(
+        <MediaGallery
+          inspectionId={INSPECTION}
+          targetId={TARGET}
+          areaKey={AREA}
+          questionKey={QUESTION}
+        />,
+      );
+
+      await waitFor(() => expect(screen.getByText(/1 file/i)).toBeInTheDocument());
+      // Local blob wins: renders the object URL, stays deletable.
+      expect(screen.getByRole('img')).toHaveAttribute('src', 'blob:mock');
+      expect(screen.getByRole('button', { name: /delete photo/i })).toBeInTheDocument();
     });
   });
 });
