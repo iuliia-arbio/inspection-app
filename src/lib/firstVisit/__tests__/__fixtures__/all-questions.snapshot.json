@@ -1643,6 +1643,8 @@
       "Elevator",
       "Basement",
       "Courtyard",
+      "Balcony",
+      "Terrace",
       "Exterior",
       "Other"
     ],
@@ -1890,6 +1892,47 @@
     "phase_label": "Unit identity",
     "visible_when": {
       "question": "fv_unit_balcony_present",
+      "equals": true
+    }
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "fv_unit_terrace_present",
+    "label": "Is there a terrace?",
+    "description": "Gate: when \"No\", terrace count collapses.",
+    "scope": "unit_category",
+    "type": "boolean",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "required": true,
+    "phase_id": "8",
+    "phase_label": "Unit identity"
+  },
+  {
+    "mode": "data",
+    "repeater": false,
+    "pms_target": null,
+    "status": "existing",
+    "verdict": null,
+    "notes": null,
+    "slug": "fv_unit_terraces_count",
+    "label": "Number of terraces",
+    "description": null,
+    "scope": "unit_category",
+    "type": "number",
+    "options": [],
+    "required": false,
+    "phase_id": "8",
+    "phase_label": "Unit identity",
+    "visible_when": {
+      "question": "fv_unit_terrace_present",
       "equals": true
     }
   },
@@ -3172,6 +3215,7 @@
       "Living room",
       "Hallway",
       "Balcony",
+      "Terrace",
       "Building/common",
       "Other"
     ],
@@ -3420,7 +3464,7 @@
     "scope": "unit_category",
     "type": "text",
     "options": [],
-    "required": true,
+    "required": false,
     "phase_id": "15",
     "phase_label": "Final assessment / readiness"
   }

@@ -414,6 +414,12 @@ export const QUESTION_STRUCTURE: StructureOverlay = {
       "equals": true
     }
   },
+  "fv_unit_terraces_count": {
+    "visible_when": {
+      "question": "fv_unit_terrace_present",
+      "equals": true
+    }
+  },
   "fv_view_actual": {
     "pms_target": "profile.viewType"
   },
