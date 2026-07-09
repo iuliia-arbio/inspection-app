@@ -61,6 +61,8 @@ describe('GET /api/first-visit/media', () => {
       rows: [
         { id: 'm1', inspection_id: 'i1', target_id: 't1', answer_id: null, area_key: 'a', question_key: 'q', kind: 'photo', storage_path: 'i1/m1.jpg', captured_at: 'ts' },
         { id: 'm2', inspection_id: 'i1', target_id: 't1', answer_id: null, area_key: 'a', question_key: 'q', kind: 'video', storage_path: 'i1/m2.mp4', captured_at: 'ts' },
+        // A row with no storage object at all — must come back all-null, not throw.
+        { id: 'm3', inspection_id: 'i1', target_id: 't1', answer_id: null, area_key: 'a', question_key: 'q', kind: 'photo', storage_path: null, captured_at: 'ts' },
       ],
       signed: {
         'first-visit-videos': [{ path: 'i1/m2.mp4', signedUrl: 'https://s/v1' }],
@@ -79,7 +81,13 @@ describe('GET /api/first-visit/media', () => {
     expect(video.url).toBe('https://s/v1');
     expect(video.thumb_url).toBeNull();
     expect(video.view_url).toBeNull();
-    // Two transform sign calls for the one photo (thumb + view), none for video.
+    // Null storage_path: nothing to sign — all URLs null.
+    const nullPath = body.media.find((m: { id: string }) => m.id === 'm3');
+    expect(nullPath.url).toBeNull();
+    expect(nullPath.thumb_url).toBeNull();
+    expect(nullPath.view_url).toBeNull();
+    // Two transform sign calls for the one signable photo (thumb + view), none
+    // for the video or the null-path photo.
     expect(createSignedUrl).toHaveBeenCalledTimes(2);
     // Video/audio still batch-signed per bucket.
     expect(createSignedUrls).toHaveBeenCalledTimes(1);

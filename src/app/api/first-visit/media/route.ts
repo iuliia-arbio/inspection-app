@@ -44,6 +44,11 @@ export async function GET(req: Request) {
           supabase.storage.from(BUCKETS.photo).createSignedUrl(path, SIGNED_URL_TTL_S, { transform: THUMB }),
           supabase.storage.from(BUCKETS.photo).createSignedUrl(path, SIGNED_URL_TTL_S, { transform: VIEW }),
         ]);
+        // A failed sign degrades to a null URL for that photo, but log it so a
+        // systemic failure (e.g. image transforms disabled on the project) is
+        // visible server-side instead of silently blanking every photo.
+        if (thumb.error) console.warn(`fv-media: thumb sign failed for ${path}: ${thumb.error.message}`);
+        if (view.error) console.warn(`fv-media: view sign failed for ${path}: ${view.error.message}`);
         photoUrls.set(path, {
           thumb: thumb.data?.signedUrl ?? null,
           view: view.data?.signedUrl ?? null,
