@@ -161,8 +161,9 @@ export function MediaGallery({
                 className="block h-16 w-16 overflow-hidden rounded border border-gray-300 bg-black/5"
               >
                 {row.tileUrl == null ? (
-                  // Remote video/audio: no eager media element — a film/clip
-                  // placeholder that loads the real file only in the modal.
+                  // No tile media: remote video/audio (the real file loads only
+                  // in the modal — avoids eager buffering) and the brief frame
+                  // before a local row's object URL exists. Film/clip placeholder.
                   <div className="flex h-full w-full items-center justify-center text-gray-400">
                     <span aria-hidden className="text-xl">
                       {row.kind === 'audio' ? '🎧' : '🎬'}

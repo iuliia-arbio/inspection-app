@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MediaGallery } from '../MediaGallery';
 import { localDb, type LocalMedia } from '@/lib/firstVisit/db';
@@ -193,6 +193,14 @@ describe('MediaGallery', () => {
       // Remote rows are uploaded by definition and not deletable from here.
       expect(screen.getByLabelText(/^uploaded$/i)).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument();
+
+      // Tapping the tile opens the modal with the larger fit-to-screen view.
+      await userEvent.click(screen.getByRole('button', { name: /open photo/i }));
+      const dialog = screen.getByRole('dialog');
+      expect(within(dialog).getByAltText(/photo preview/i)).toHaveAttribute(
+        'src',
+        remoteRow.view_url,
+      );
     });
 
     it('renders a remote video as a placeholder, not an eager <video>', async () => {
