@@ -268,9 +268,13 @@ describe('MediaGallery', () => {
       );
 
       await waitFor(() => expect(screen.getByText(/1 file/i)).toBeInTheDocument());
-      // Local blob wins: renders the object URL, stays deletable.
-      expect(screen.getByRole('img')).toHaveAttribute('src', 'blob:mock');
-      expect(screen.getByRole('button', { name: /delete photo/i })).toBeInTheDocument();
+      // Local blob wins: renders the object URL, stays deletable. Awaited:
+      // local rows show a placeholder for the frame before their object URLs
+      // exist.
+      await waitFor(() => {
+        expect(screen.getByRole('img')).toHaveAttribute('src', 'blob:mock');
+        expect(screen.getByRole('button', { name: /delete photo/i })).toBeInTheDocument();
+      });
     });
   });
 });

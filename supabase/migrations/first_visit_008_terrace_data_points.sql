@@ -34,3 +34,11 @@ SELECT
 WHERE NOT EXISTS (
   SELECT 1 FROM onboarding.data_points WHERE slug = 'fv_unit_terraces_count'
 );
+
+-- Post-apply verification: run this and confirm BOTH rows come back with
+-- level = 'unit' and active = true. Note the WHERE NOT EXISTS guards above
+-- only insert missing rows — they will NOT heal a pre-existing row with
+-- wrong values; if a row exists but level/active are off, fix it manually.
+SELECT slug, level, active
+FROM onboarding.data_points
+WHERE slug IN ('fv_unit_terrace_present', 'fv_unit_terraces_count');
