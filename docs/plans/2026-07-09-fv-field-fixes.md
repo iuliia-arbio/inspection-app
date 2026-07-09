@@ -51,16 +51,12 @@ Low risk; edits to the authoritative source then regenerate. **All three are one
 **#7 — make general comment optional (trivial):**
 - `rows.mjs:422` — change `fv_general_comments` `required: true` → `required: false`.
 
-**#6 — balcony/terrace in issue-log location:**
-- `rows.mjs:393` — unit issue log `issue_location` options: change `'Balcony'` →
-  `'Balcony/Terrace'` (or add `'Terrace'` as a separate option — confirm which:
-  renaming keeps one option, adding gives two. Recommend **rename to
-  'Balcony/Terrace'** to match Joshua's ask "instead it should be balcony/terrasse").
-- `rows.mjs:203` — building issue log `prop_issue_area`: add `'Balcony/Terrace'` (or
-  `'Terrace'`) to the option list.
-- ⚠️ These option strings become stored values. Historical rows with `'Balcony'`
-  keep that literal value; no migration needed (free-text value column), but the
-  CSV/hub will show both `'Balcony'` and `'Balcony/Terrace'`.
+**#6 — balcony/terrace in issue-log location (DECIDED: separate options):**
+- `rows.mjs:393` — unit issue log `issue_location`: keep `'Balcony'`, add `'Terrace'`
+  right after it.
+- `rows.mjs:203` — building issue log `prop_issue_area`: add `'Balcony'` and
+  `'Terrace'` (it currently has neither).
+- Option strings are stored values; no migration needed (free-text value column).
 
 **#2 — add a unit terrace question:**
 - After `rows.mjs:229` (`fv_unit_balconies_count`), add a terrace present/count pair
@@ -278,9 +274,19 @@ pending jobs.
 6. **Batch F (#4)** — speed test.
 7. **Batch G (#1)** — sync visibility/submit safety (confirm approach first).
 
-## Open items to confirm during planning
-- ~~#2/#6 hub registry migration scope~~ — DECIDED: hub migration in scope for #2.
-- #11 C1 identity approach (adopt existing hub id per deal vs deterministic id) —
-  recommend adopting the existing hub id (safer with live data).
-- #3 auto-created unit default label ("Unit 1" recommended).
-- ~~#1 submit-contract change~~ — DECIDED: gate on drained outbox + re-runnable submit.
+## All open items DECIDED (2026-07-09, second round with Joshua)
+- #2/#6 hub registry migration in scope for #2; #6 = separate 'Terrace' option (unit
+  log keeps 'Balcony' + adds 'Terrace'; building log adds BOTH).
+- #2 terrace questions mirror the balcony pair exactly (present yes/no + count on
+  yes, same phase/required-ness).
+- #11 C1 identity: adopt the existing hub inspection id per deal (canonical after
+  cleanup). Cleanup: keep the filled-out inspection per deal, discard the rest —
+  NO answer merging (properties/units are easy to re-add). Dry-run shown first.
+- **After-submit rule (NEW): submitted visits are REOPENABLE for editing** and can
+  be re-submitted (pairs with Batch G's idempotent re-runnable submit). This changes
+  the current "You will not be able to edit this visit after submitting" copy + the
+  submitted-lock behavior — implement in Batch C alongside one-visit-per-deal.
+- #3 auto-created unit default label: "Unit 1".
+- #1 submit gate: SOFT block — "X answers haven't reached the hub yet" + Retry, with
+  an explicit "Submit anyway" override; re-runnable submit heals stragglers.
+- Sequencing: Batch B starts immediately; no hold for field confirmation of Batch A.
