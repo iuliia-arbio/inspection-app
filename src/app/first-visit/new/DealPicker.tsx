@@ -1,37 +1,8 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { localDb } from '@/lib/firstVisit/db';
-import { enqueue } from '@/lib/firstVisit/sync';
 import { track } from '@/lib/firstVisit/analytics';
-
-// Picking (or creating) a deal routes straight into the navigator — no
-// intermediate "Start visit" screen. If a draft inspection already exists for
-// the deal locally, we resume it instead of creating yet another row.
-async function resumeOrStartVisit(dealId: string): Promise<{ id: string; resumed: boolean }> {
-  const existing = await localDb.inspections
-    .where('deal_id')
-    .equals(dealId)
-    .toArray();
-  const draft = existing
-    .filter((i) => i.status === 'draft')
-    .sort((a, b) => (a.started_at < b.started_at ? 1 : -1))[0];
-  if (draft) {
-    return { id: draft.id, resumed: true };
-  }
-  const id = crypto.randomUUID();
-  const inspection = {
-    id,
-    deal_id: dealId,
-    status: 'draft' as const,
-    inspector_email: '', // filled server-side from session
-    started_at: new Date().toISOString(),
-  };
-  await localDb.inspections.put(inspection);
-  await enqueue('inspection_upsert', inspection);
-  track('first_visit_started', { inspection_id: id, deal_id: dealId });
-  return { id, resumed: false };
-}
+import { resumeOrStartVisit } from '@/lib/firstVisit/resumeOrStartVisit';
 
 export default function DealPicker({ deals }: { deals: { id: string; name: string }[] }) {
   const router = useRouter();
