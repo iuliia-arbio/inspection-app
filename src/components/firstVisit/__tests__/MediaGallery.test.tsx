@@ -240,6 +240,13 @@ describe('MediaGallery', () => {
       expect(document.querySelector('video')).toBeNull();
       // The tile is still openable.
       expect(screen.getByRole('button', { name: /open video/i })).toBeInTheDocument();
+
+      // Opening the tile mounts the modal <video> streaming the signed URL,
+      // with preload=none so nothing buffers until playback.
+      await userEvent.click(screen.getByRole('button', { name: /open video/i }));
+      const modalVideo = within(screen.getByRole('dialog')).getByLabelText(/video preview/i);
+      expect(modalVideo).toHaveAttribute('src', 'https://hub/signed/remote-vid.mp4');
+      expect(modalVideo).toHaveAttribute('preload', 'none');
     });
 
     it('prefers the local copy when the same id exists on this device', async () => {
