@@ -78,7 +78,7 @@ export function MediaGallery({
       const theirs = remote.filter(
         (m) =>
           !localIds.has(m.id) &&
-          !!m.url &&
+          !!(m.thumb_url || m.view_url || m.url) &&
           m.target_id === targetId &&
           m.area_key === areaKey &&
           (questionKey ? m.question_key === questionKey : true),
@@ -123,14 +123,18 @@ export function MediaGallery({
     ...rows.map((r) => ({
       id: r.id,
       kind: r.kind,
-      url: urls[r.id],
+      tileUrl: urls[r.id],
+      viewUrl: urls[r.id],
       uploaded: !!r.uploaded_at,
       deletable: true,
     })),
     ...remoteRows.map((r) => ({
       id: r.id,
       kind: r.kind,
-      url: r.url as string,
+      // Photos: small thumbnail in the tile. Video/audio: no tile media.
+      tileUrl: r.kind === 'photo' ? (r.thumb_url ?? r.view_url ?? undefined) : undefined,
+      // Modal: fit-to-screen photo, or the streamed video/audio URL.
+      viewUrl: r.kind === 'photo' ? (r.view_url ?? r.thumb_url ?? undefined) : (r.url ?? undefined),
       uploaded: true,
       deletable: false,
     })),
@@ -147,7 +151,6 @@ export function MediaGallery({
       </p>
       <ul className="flex flex-wrap gap-2 p-0 m-0 list-none">
         {items.map((row) => {
-          const url = row.url;
           return (
             <li key={row.id} className="relative">
               <button
@@ -157,17 +160,28 @@ export function MediaGallery({
                 aria-label={`Open ${row.kind}`}
                 className="block h-16 w-16 overflow-hidden rounded border border-gray-300 bg-black/5"
               >
-                {row.kind === 'video' ? (
+                {row.tileUrl == null ? (
+                  // Remote video/audio: no eager media element — a film/clip
+                  // placeholder that loads the real file only in the modal.
+                  <div className="flex h-full w-full items-center justify-center text-gray-400">
+                    <span aria-hidden className="text-xl">
+                      {row.kind === 'audio' ? '🎧' : '🎬'}
+                    </span>
+                  </div>
+                ) : row.kind === 'video' ? (
                   <video
-                    src={url}
+                    src={row.tileUrl}
                     muted
+                    preload="metadata"
                     className="h-full w-full object-cover"
                     aria-label={`${row.kind} thumbnail`}
                   />
                 ) : (
                   <img
-                    src={url}
+                    src={row.tileUrl}
                     alt={`${row.kind} thumbnail`}
+                    loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-cover"
                   />
                 )}
@@ -219,15 +233,16 @@ export function MediaGallery({
           >
             {openRow.kind === 'video' ? (
               <video
-                src={openRow.url}
+                src={openRow.viewUrl}
                 controls
                 autoPlay
+                preload="none"
                 className="max-h-[80vh] max-w-full rounded"
                 aria-label={`${openRow.kind} preview`}
               />
             ) : (
               <img
-                src={openRow.url}
+                src={openRow.viewUrl}
                 alt={`${openRow.kind} preview`}
                 className="max-h-[80vh] max-w-full rounded"
               />
