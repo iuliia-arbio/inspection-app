@@ -230,7 +230,7 @@ speedtest request through without a session. tsc + suite → commit.
 
 ---
 
-## Batch G — Sync visibility + submit safety (#1)
+## Batch G — Sync visibility + submit safety + immediate push (#1, #12)
 
 Overlaps known batch-3 debt (see MEMORY.md open bugs). **Med-high risk; do last.**
 
@@ -254,6 +254,15 @@ Overlaps known batch-3 debt (see MEMORY.md open bugs). **Med-high risk; do last.
      a re-run heals late-arriving answers instead of losing them permanently.
   Rationale: the gate prevents the failure; idempotent re-run recovers from anything
   that slips past it (offline edge cases, days-later devices).
+- **#12 — Immediate push on entry (Joshua, 2026-07-09):** every entered answer should
+  reach the hub right away, not on the 30 s drain cycle. Keep the local-first write +
+  outbox (offline must keep working), but trigger `drainOutbox` immediately on every
+  `enqueue` when online, debounced ~1–2 s so rapid typing batches into one push. Keep
+  the 30 s interval + focus/online triggers as the retry/fallback path. Likely change:
+  `sync.ts` `enqueue()` fires a debounced drain (or emits an event `useSyncEngine`
+  listens to). Also mount the sync engine (or at least a drain trigger) on the visits
+  list page — today it only lives in VisitNavigator, so jobs queued elsewhere sit
+  until a survey is opened.
 
 **Tests:** SyncBadge failing state when online+errored; submit blocked/warned with
 pending jobs.
