@@ -10,7 +10,9 @@ const ROW = {
   question_key: 'overall',
   kind: 'photo',
   captured_at: '2026-07-09T08:00:00.000Z',
-  url: 'https://signed/url.jpg',
+  url: null,
+  thumb_url: 'https://signed/thumb.jpg',
+  view_url: 'https://signed/view.jpg',
 };
 
 describe('getRemoteMedia', () => {

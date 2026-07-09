@@ -13,7 +13,12 @@ export type RemoteMedia = {
   question_key: string | null;
   kind: 'photo' | 'video' | 'audio';
   captured_at: string;
+  // Photos: null (use thumb_url / view_url instead). Video/audio: full signed URL.
   url: string | null;
+  // Photos only: transformed signed URLs. thumb_url ~200px for the gallery tile,
+  // view_url ~1080px for the tap-open modal. Null for video/audio.
+  thumb_url: string | null;
+  view_url: string | null;
 };
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
