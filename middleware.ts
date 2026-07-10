@@ -11,10 +11,22 @@ export async function middleware(req: NextRequest) {
   }
 
   // Allow auth callback and public assets through.
+  //
+  // Speedtest routes + vendored LibreSpeed assets are deliberately unauthenticated:
+  // supabase.auth.getUser() below is a network round-trip to Supabase, and LibreSpeed
+  // opens 6 concurrent download + 3 upload streams plus ping/getIp — each paying that
+  // round-trip skews ping and depresses measured throughput, and an expired session
+  // mid-test returns a login redirect instead of bytes. Security tradeoff: these
+  // endpoints expose no data (ping returns 204, download streams random bytes capped
+  // at 100 MiB/request in its route, upload only counts received bytes and stores
+  // nothing), so the only cost of anonymous access is bandwidth, same as any public
+  // speedtest server. /vendor/ is static LGPL client JS.
   if (
     url.pathname.startsWith('/auth/callback') ||
     url.pathname.startsWith('/_next') ||
     url.pathname.startsWith('/api/auth') ||
+    url.pathname.startsWith('/api/first-visit/speedtest/') ||
+    url.pathname.startsWith('/vendor/') ||
     url.pathname === '/favicon.ico'
   ) {
     return NextResponse.next();
