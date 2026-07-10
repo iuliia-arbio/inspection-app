@@ -111,6 +111,43 @@ async function drainOnce(handlers: JobHandlers): Promise<void> {
   }
 }
 
+// TODO(Task 4): remove once useSyncEngine switches to outboxStats — kept so
+// tsc stays clean while useSyncEngine.ts still imports it.
 export async function outboxCount(): Promise<number> {
   return localDb.outbox.count();
+}
+
+// A job is STUCK after 3 failed attempts — with instant push + 30 s retries
+// that's over a minute of real failure, so the badge doesn't flap on a single
+// transient blip that the next retry heals.
+export const STUCK_ATTEMPTS = 3;
+
+export type OutboxStats = { pending: number; stuck: number; lastError?: string };
+
+export async function outboxStats(): Promise<OutboxStats> {
+  const jobs = await localDb.outbox.toArray();
+  const errored = jobs
+    .filter((j) => j.last_error)
+    .sort((a, b) => (b.last_attempt_at ?? 0) - (a.last_attempt_at ?? 0));
+  return {
+    pending: jobs.length,
+    stuck: jobs.filter((j) => j.attempts >= STUCK_ATTEMPTS).length,
+    lastError: errored[0]?.last_error,
+  };
+}
+
+// Which inspection a job belongs to. Every kind's payload carries
+// inspection_id except inspection_upsert, whose payload IS the inspection.
+function jobInspectionId(job: OutboxJob): string | undefined {
+  const p = job.payload as { inspection_id?: string; id?: string } | null;
+  return job.kind === 'inspection_upsert' ? p?.id : p?.inspection_id;
+}
+
+// Undelivered field data for ONE inspection — feeds the soft submit gate.
+// submit/discard jobs are control-flow, not answers, and are excluded.
+export async function pendingCountForInspection(inspectionId: string): Promise<number> {
+  const jobs = await localDb.outbox.toArray();
+  return jobs.filter(
+    (j) => j.kind !== 'submit' && j.kind !== 'discard' && jobInspectionId(j) === inspectionId,
+  ).length;
 }

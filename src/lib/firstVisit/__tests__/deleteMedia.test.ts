@@ -34,7 +34,8 @@ describe('deleteMedia', () => {
     const jobs = await localDb.outbox.toArray();
     expect(jobs).toHaveLength(1);
     expect(jobs[0].kind).toBe('media_delete');
-    expect(jobs[0].payload).toEqual({ id: 'm1' });
+    // inspection_id lets the soft submit gate attribute this job to its visit.
+    expect(jobs[0].payload).toEqual({ id: 'm1', inspection_id: 'i1' });
   });
 
   it('deletes the row but does NOT enqueue when never uploaded', async () => {

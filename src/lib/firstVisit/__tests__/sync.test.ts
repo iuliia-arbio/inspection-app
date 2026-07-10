@@ -5,6 +5,8 @@ import {
   drainOutbox,
   cancelScheduledDrain,
   DRAIN_DEBOUNCE_MS,
+  outboxStats,
+  pendingCountForInspection,
 } from '../sync';
 
 // The debounced drain-on-enqueue builds its own handlers via createHandlers();
@@ -136,5 +138,36 @@ describe('debounced drain-on-enqueue', () => {
     await vi.advanceTimersByTimeAsync(5_000);
     expect(debouncedHandler).not.toHaveBeenCalled();
     expect(await localDb.outbox.count()).toBe(1);
+  });
+});
+
+describe('outboxStats', () => {
+  it('counts pending and stuck (attempts >= 3) and exposes the most recent error', async () => {
+    await localDb.outbox.add({ kind: 'answer_upsert', payload: { inspection_id: 'i1' }, created_at: 1, attempts: 0 });
+    await localDb.outbox.add({ kind: 'answer_upsert', payload: { inspection_id: 'i1' }, created_at: 2, attempts: 3, last_error: 'old boom', last_attempt_at: 100 });
+    await localDb.outbox.add({ kind: 'media_upload', payload: { inspection_id: 'i1' }, created_at: 3, attempts: 5, last_error: 'new boom', last_attempt_at: 200 });
+    const s = await outboxStats();
+    expect(s).toEqual({ pending: 3, stuck: 2, lastError: 'new boom' });
+  });
+
+  it('a single transient failure is not stuck', async () => {
+    await localDb.outbox.add({ kind: 'answer_upsert', payload: {}, created_at: 1, attempts: 1, last_error: 'blip', last_attempt_at: 1 });
+    expect((await outboxStats()).stuck).toBe(0);
+  });
+});
+
+describe('pendingCountForInspection', () => {
+  it('counts jobs across kinds via payload inspection_id, inspection_upsert via payload.id', async () => {
+    await localDb.outbox.add({ kind: 'answer_upsert', payload: { inspection_id: 'i1' }, created_at: 1, attempts: 0 });
+    await localDb.outbox.add({ kind: 'inspection_upsert', payload: { id: 'i1' }, created_at: 2, attempts: 0 });
+    await localDb.outbox.add({ kind: 'media_upload', payload: { media_id: 'm', inspection_id: 'i1' }, created_at: 3, attempts: 0 });
+    await localDb.outbox.add({ kind: 'target_delete', payload: { id: 't', inspection_id: 'i1' }, created_at: 4, attempts: 0 });
+    await localDb.outbox.add({ kind: 'answer_upsert', payload: { inspection_id: 'OTHER' }, created_at: 5, attempts: 0 });
+    expect(await pendingCountForInspection('i1')).toBe(4);
+  });
+
+  it('excludes submit/discard jobs (control-flow, not answers)', async () => {
+    await localDb.outbox.add({ kind: 'submit', payload: { inspection_id: 'i1' }, created_at: 1, attempts: 0 });
+    expect(await pendingCountForInspection('i1')).toBe(0);
   });
 });

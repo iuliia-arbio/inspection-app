@@ -21,7 +21,9 @@ export async function deleteMedia(id: string): Promise<void> {
   if (!row) return;
   await localDb.media.delete(id);
   if (row.uploaded_at) {
-    await enqueue('media_delete', { id });
+    // inspection_id is not used by the delete handler (it queries by id) but
+    // lets pendingCountForInspection attribute the job to its visit.
+    await enqueue('media_delete', { id, inspection_id: row.inspection_id });
   }
 }
 
