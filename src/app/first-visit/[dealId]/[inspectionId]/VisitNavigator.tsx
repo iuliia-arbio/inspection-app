@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { localDb, type LocalAnswer, type LocalInspection, type LocalTarget } from '@/lib/firstVisit/db';
+import { localDb, type LocalAnswer, type LocalInspection, type LocalMedia, type LocalTarget } from '@/lib/firstVisit/db';
 import { enqueue, ensureInspectionQueued } from '@/lib/firstVisit/sync';
 import { useSyncEngine } from '@/lib/firstVisit/useSyncEngine';
 import { createHandlers } from '@/lib/firstVisit/handlers';
@@ -108,6 +108,9 @@ export default function VisitNavigator({
 }) {
   const [targets, setTargets] = useState<LocalTarget[]>([]);
   const [answers, setAnswers] = useState<LocalAnswer[]>([]);
+  // Media rows feed progress too: photo/video questions have no answer row,
+  // so the rings/remaining list consult captured media (see progress.ts).
+  const [media, setMedia] = useState<LocalMedia[]>([]);
   // The inspection row drives the reopen UX: a submitted visit stays fully
   // editable (local status stays 'submitted' — no flapping), and the submit
   // affordance becomes "Re-submit" so the inspector knows they're updating
@@ -154,6 +157,14 @@ export default function VisitNavigator({
     setAnswers(rows);
   }, [inspectionId]);
 
+  const reloadMedia = useCallback(async () => {
+    const rows = await localDb.media
+      .where('inspection_id')
+      .equals(inspectionId)
+      .toArray();
+    setMedia(rows);
+  }, [inspectionId]);
+
   const reloadInspection = useCallback(async () => {
     setInspection((await localDb.inspections.get(inspectionId)) ?? null);
   }, [inspectionId]);
@@ -164,8 +175,10 @@ export default function VisitNavigator({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- load on mount
     void reloadAnswers();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- load on mount
+    void reloadMedia();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load on mount
     void reloadInspection();
-  }, [reloadTargets, reloadAnswers, reloadInspection]);
+  }, [reloadTargets, reloadAnswers, reloadMedia, reloadInspection]);
 
   const isResubmit = inspection?.status === 'submitted';
 
@@ -181,9 +194,32 @@ export default function VisitNavigator({
   const unitsOf = (propId: string) =>
     targets.filter((t) => t.kind === 'unit' && t.parent_id === propId);
 
+  // Media-answered question keys per target — file questions count as done
+  // when captured media exists for them (LOCAL rows only; a cloud-restored
+  // device has no media rows, so its file questions read as missing).
+  const mediaKeysByTarget = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const row of media) {
+      if (!row.question_key) continue;
+      let set = m.get(row.target_id);
+      if (!set) {
+        set = new Set();
+        m.set(row.target_id, set);
+      }
+      set.add(row.question_key);
+    }
+    return m;
+  }, [media]);
+
   const progressFor = (targetId: string, scope: HubScope, phaseIds?: string[]): ScopeProgress => {
     const own = answers.filter((a) => a.target_id === targetId);
-    return computeProgressFromAnswers(scope, own, phaseIds, configPhases);
+    return computeProgressFromAnswers(
+      scope,
+      own,
+      phaseIds,
+      configPhases,
+      mediaKeysByTarget.get(targetId),
+    );
   };
 
   // Aggregate completion across every scope in this visit: deal-scoped
@@ -215,6 +251,7 @@ export default function VisitNavigator({
         scope: 'deal',
         answers: answers.filter((a) => a.target_id === inspectionId),
         phases: configPhases,
+        mediaKeys: mediaKeysByTarget.get(inspectionId),
       },
     ];
     for (const p of properties) {
@@ -223,6 +260,7 @@ export default function VisitNavigator({
         scope: 'location',
         answers: answers.filter((a) => a.target_id === p.id),
         phases: configPhases,
+        mediaKeys: mediaKeysByTarget.get(p.id),
       });
       for (const u of unitsOf(p.id)) {
         inputs.push({
@@ -230,6 +268,7 @@ export default function VisitNavigator({
           scope: 'unit_category',
           answers: answers.filter((a) => a.target_id === u.id),
           phases: configPhases,
+          mediaKeys: mediaKeysByTarget.get(u.id),
         });
       }
     }
@@ -463,6 +502,8 @@ export default function VisitNavigator({
         onBack={() => {
           setSelected(null);
           void reloadAnswers();
+          // Media captured inside the survey must tick the ring on return.
+          void reloadMedia();
         }}
         breadcrumb={breadcrumb}
         phaseIds={phaseIds}

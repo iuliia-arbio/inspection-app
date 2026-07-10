@@ -117,6 +117,42 @@ export function UnitSurvey({
     setCurrentIdx(0);
   }, [target.id]);
 
+  // Media-answered question keys for this target. Photo/video capture writes
+  // only the media table — no answer row exists — so required file questions
+  // count as done through this set (see progress.ts). Kept live via the
+  // media-table hooks so a capture ticks the ring immediately (same pattern
+  // as MediaGallery). LOCAL rows only: a cloud-restored device has no blobs,
+  // so its file questions read as missing — known limitation.
+  const [mediaKeys, setMediaKeys] = useState<Set<string>>(new Set());
+  const [mediaRev, setMediaRev] = useState(0);
+  useEffect(() => {
+    const bump = () => setMediaRev((r) => r + 1);
+    localDb.media.hook('creating', bump);
+    localDb.media.hook('deleting', bump);
+    return () => {
+      localDb.media.hook('creating').unsubscribe(bump);
+      localDb.media.hook('deleting').unsubscribe(bump);
+    };
+  }, []);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const rows = await localDb.media
+        .where('inspection_id')
+        .equals(inspectionId)
+        .toArray();
+      if (!alive) return;
+      const keys = new Set<string>();
+      for (const m of rows) {
+        if (m.target_id === target.id && m.question_key) keys.add(m.question_key);
+      }
+      setMediaKeys(keys);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [inspectionId, target.id, mediaRev]);
+
   // Keep the active section chip visible in the strip when it changes, and
   // bring the new section header into view on the page itself. Skip on first
   // mount so we don't snap the page on initial load.
@@ -437,10 +473,14 @@ export function UnitSurvey({
     const required = requiredVisible([...inPhases, ...allAnchoredInScope], valueByKey);
     const done = required.filter((q) => {
       const key = `${target.id}::${areaKeyFor(q)}::${q.slug}`;
-      return isAnswered(answers[key]?.value);
+      return (
+        isAnswered(answers[key]?.value) ||
+        // File questions are answered by captured media, not an answer row.
+        (q.type === 'file' && mediaKeys.has(q.slug))
+      );
     }).length;
     return { done, total: required.length };
-  }, [phases, allAnchoredInScope, answers, target.id, valueByKey]);
+  }, [phases, allAnchoredInScope, answers, target.id, valueByKey, mediaKeys]);
 
   // Index of the next phase that has a required, unanswered question, searching
   // from currentIdx + 1 forward, then wrapping to 0..currentIdx. Returns null
@@ -467,7 +507,10 @@ export function UnitSurvey({
       // dependent must not make a phase look perpetually incomplete.
       return requiredVisible([...own, ...anchored], valueByKey).some((q) => {
         const key = `${target.id}::${areaKeyFor(q)}::${q.slug}`;
-        return !isAnswered(answers[key]?.value);
+        return !(
+          isAnswered(answers[key]?.value) ||
+          (q.type === 'file' && mediaKeys.has(q.slug))
+        );
       });
     };
     for (let i = currentIdx + 1; i < phases.length; i++) {
@@ -477,7 +520,7 @@ export function UnitSurvey({
       if (phaseHasIncomplete(phases[i])) return i;
     }
     return null;
-  }, [phases, anchoredByAnchorPhase, answers, target.id, currentIdx, valueByKey]);
+  }, [phases, anchoredByAnchorPhase, answers, target.id, currentIdx, valueByKey, mediaKeys]);
 
   if (phases.length === 0) {
     return (
@@ -610,7 +653,10 @@ export function UnitSurvey({
             );
             const doneInPhase = reqInPhase.filter((q) => {
               const key = `${target.id}::${areaKeyFor(q)}::${q.slug}`;
-              return isAnswered(answers[key]?.value);
+              return (
+                isAnswered(answers[key]?.value) ||
+                (q.type === 'file' && mediaKeys.has(q.slug))
+              );
             }).length;
             const phaseComplete = reqInPhase.length > 0 && doneInPhase === reqInPhase.length;
 
