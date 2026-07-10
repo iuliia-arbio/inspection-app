@@ -4,7 +4,7 @@ const MiB = 1024 * 1024;
 // stream below never allocates more than 64KB at a time regardless of the requested size.
 // 100 MiB matches LibreSpeed's default garbagePhp_chunkSize of 100.
 const MAX_BYTES = 100 * MiB;
-const MIN_BYTES = 1 * MiB;
+const MIN_BYTES = 1 * MiB; // ckSize path only — the `bytes` fallback keeps its 0 floor for manual small payloads
 const DEFAULT_BYTES = 4 * MiB; // fallback when neither param is given
 
 export async function GET(req: Request) {
@@ -28,15 +28,19 @@ export async function GET(req: Request) {
   const chunk = new Uint8Array(64 * 1024); // 64KB chunks
   crypto.getRandomValues(chunk); // avoid gzip/compression shrinking the payload in transit
 
+  // pull()-based for real backpressure: chunks are enqueued only as the client reads,
+  // so a slow/cancelled consumer never queues the whole payload, and per-chunk work
+  // (e.g. future re-randomization) stays O(64KB) memory.
+  let sent = 0;
   const stream = new ReadableStream({
-    start(controller) {
-      let sent = 0;
-      while (sent < bytes) {
-        const remaining = bytes - sent;
-        controller.enqueue(remaining >= chunk.length ? chunk : chunk.slice(0, remaining));
-        sent += chunk.length;
+    pull(controller) {
+      if (sent >= bytes) {
+        controller.close();
+        return;
       }
-      controller.close();
+      const remaining = bytes - sent;
+      controller.enqueue(remaining >= chunk.length ? chunk : chunk.slice(0, remaining));
+      sent += Math.min(remaining, chunk.length);
     },
   });
 

@@ -19,8 +19,12 @@ export async function middleware(req: NextRequest) {
   // mid-test returns a login redirect instead of bytes. Security tradeoff: these
   // endpoints expose no data (ping returns 204, download streams random bytes capped
   // at 100 MiB/request in its route, upload only counts received bytes and stores
-  // nothing), so the only cost of anonymous access is bandwidth, same as any public
-  // speedtest server. /vendor/ is static LGPL client JS.
+  // nothing). The real cost is BILLING, not data: Vercel meters egress per GB, so a
+  // ~300-byte unauthenticated GET can pull 100 MiB of metered egress (~350,000x
+  // amplification) with no rate limit — an abuser looping the download route runs up
+  // the bandwidth bill. ACCEPTED tradeoff for now; if abused, mitigate with a Vercel
+  // WAF rate-limit rule on /api/first-visit/speedtest/* (a few req/s per IP) rather
+  // than re-adding auth here. /vendor/ is static LGPL client JS.
   if (
     url.pathname.startsWith('/auth/callback') ||
     url.pathname.startsWith('/_next') ||
