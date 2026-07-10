@@ -128,6 +128,11 @@ export default function VisitNavigator({
   const [submitState, setSubmitState] = useState<'idle' | 'confirming' | 'submitted'>(
     'idle',
   );
+  // Batch E1: once the inspector opens the submit dialog, missing required
+  // fields escalate from the subtle live cue to a strong red + aria-invalid
+  // state. Persists for the session (this component stays mounted while a
+  // target's survey is open, so the flag threads down as a plain prop).
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const handlers = useMemo(() => createHandlers(), []);
   const { pending, syncNow, syncing } = useSyncEngine(handlers);
   const { phases: configPhases } = useSurveyConfig();
@@ -563,6 +568,7 @@ export default function VisitNavigator({
         }}
         breadcrumb={breadcrumb}
         phaseIds={phaseIds}
+        submitAttempted={submitAttempted}
       />
     );
   }
@@ -754,7 +760,10 @@ export default function VisitNavigator({
           a deal-level evaluation card. */}
 
       <button
-        onClick={() => setSubmitState('confirming')}
+        onClick={() => {
+          setSubmitAttempted(true);
+          setSubmitState('confirming');
+        }}
         className="mt-6 w-full rounded-md bg-black px-4 py-3 text-white"
       >
         {isResubmit ? 'Re-submit visit' : 'Submit visit'}

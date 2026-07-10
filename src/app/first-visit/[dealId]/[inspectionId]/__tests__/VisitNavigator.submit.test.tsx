@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import VisitNavigator from '../VisitNavigator';
 import { localDb, type LocalTarget } from '@/lib/firstVisit/db';
-import { questionsForScope } from '@/lib/firstVisit/questions';
+import { questionsForScope, type FirstVisitPhase, type FirstVisitQuestion } from '@/lib/firstVisit/questions';
+import { SurveyConfigProvider } from '@/lib/firstVisit/SurveyConfigContext';
 
 // Keep the sync engine inert and deterministic — this test is about the submit
 // dialog's "what's left" list and the success state, not the outbox.
@@ -46,7 +47,11 @@ async function seedProperty(status: 'draft' | 'submitted' = 'draft') {
 beforeEach(() => {
   vi.stubGlobal(
     'fetch',
-    vi.fn().mockResolvedValue({ ok: true, json: async () => ({ deal: { id: DEAL }, locations: [], units: [] }) }),
+    vi.fn().mockResolvedValue({
+      ok: true,
+      // `points: []` keeps lookupHubValue happy when a survey is opened.
+      json: async () => ({ deal: { id: DEAL }, locations: [], units: [], points: [] }),
+    }),
   );
 });
 
@@ -121,5 +126,50 @@ describe('VisitNavigator submit flow', () => {
       'submit_clicked',
       expect.objectContaining({ inspection_id: INSPECTION, resubmit: true }),
     );
+  });
+
+  it('a submit attempt persists after cancel and escalates missing required fields in the survey', async () => {
+    await seedProperty();
+    Element.prototype.scrollIntoView = vi.fn();
+
+    // Minimal runtime config: one location-scope phase with one required text
+    // question, so the opened property survey has a deterministic missing field.
+    const q: FirstVisitQuestion = {
+      slug: 'req_text',
+      label: 'Required text',
+      description: null,
+      scope: 'location',
+      mode: 'data',
+      type: 'text',
+      options: [],
+      required: true,
+      repeater: false,
+      pms_target: null,
+      status: 'existing',
+      verdict: null,
+      notes: null,
+      phase_id: 'p1',
+      phase_label: 'Phase 1',
+    };
+    const phases: FirstVisitPhase[] = [{ id: 'p1', label: 'Phase 1', questions: [q] }];
+
+    render(
+      <SurveyConfigProvider value={{ phases, allQuestions: [q] }}>
+        <VisitNavigator dealId={DEAL} inspectionId={INSPECTION} visitTitle="Test Visit" />
+      </SurveyConfigProvider>,
+    );
+    await waitFor(() => expect(screen.getByText('Main Building')).toBeInTheDocument());
+
+    // Open the submit dialog, then back out — the attempt must stick.
+    fireEvent.click(screen.getByRole('button', { name: 'Submit visit' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Keep editing' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // Open the property survey: the empty required field is now strong.
+    fireEvent.click(screen.getByText('Tap to open property questions'));
+    const input = await screen.findByLabelText(/Required text/);
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(input.closest('[data-missing]')?.getAttribute('data-missing')).toBe('strong');
   });
 });

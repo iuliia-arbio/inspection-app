@@ -51,6 +51,7 @@ export function UnitSurvey({
   onBack,
   breadcrumb,
   phaseIds,
+  submitAttempted,
 }: {
   inspectionId: string;
   target: SurveyTarget;
@@ -60,6 +61,11 @@ export function UnitSurvey({
   onBack: () => void;
   breadcrumb?: string[];
   phaseIds?: string[];
+  // Batch E1: true once the inspector has opened the submit dialog (state
+  // lives in VisitNavigator and persists for the session). Escalates the
+  // missing-required cue from a subtle amber hint to red + aria-invalid, and
+  // flags section chips that still have outstanding required questions.
+  submitAttempted?: boolean;
 }) {
   const { phases: configPhases } = useSurveyConfig();
   const [answers, setAnswers] = useState<Record<string, LocalAnswer>>({});
@@ -458,6 +464,18 @@ export function UnitSurvey({
     return justFilledKeys.has(key);
   };
 
+  // Batch E1: per-field missing-required state. "Missing" = scope-level
+  // required && not answered (value or media). Visibility is enforced by the
+  // render path itself — hidden questions never reach the renderer — so only
+  // rendered questions are ever checked. Cheap: everything is already in
+  // memory. Subtle while the inspector works; strong after a submit attempt.
+  const missingFor = (q: FirstVisitQuestion): 'subtle' | 'strong' | undefined => {
+    if (!isScopeLevelRequired(q)) return undefined;
+    const key = `${target.id}::${areaKeyFor(q)}::${q.slug}`;
+    if (isAnsweredValueOrMedia(q, answers[key]?.value, mediaKeys)) return undefined;
+    return submitAttempted ? 'strong' : 'subtle';
+  };
+
   // Progress across the whole scope: required answered / required total.
   // Anchored file-questions render inside another phase but still count
   // toward the anchor's phase progress (they no longer have a phase of their
@@ -650,6 +668,17 @@ export function UnitSurvey({
               return isAnsweredValueOrMedia(q, answers[key]?.value, mediaKeys);
             }).length;
             const phaseComplete = reqInPhase.length > 0 && doneInPhase === reqInPhase.length;
+            // E1: after a submit attempt, flag sections with outstanding
+            // VISIBLE required questions (requiredVisible keeps a hidden
+            // required dependent from flagging a section forever).
+            const missingInPhase = submitAttempted
+              ? requiredVisible([...p.questions, ...anchoredHere], valueByKey).filter(
+                  (q) => {
+                    const key = `${target.id}::${areaKeyFor(q)}::${q.slug}`;
+                    return !isAnsweredValueOrMedia(q, answers[key]?.value, mediaKeys);
+                  },
+                ).length
+              : 0;
 
             return (
               <button
@@ -677,6 +706,15 @@ export function UnitSurvey({
                     aria-hidden
                     className={`inline-block h-1.5 w-1.5 rounded-full ${
                       active ? 'bg-white' : 'bg-emerald-500'
+                    }`}
+                  />
+                )}
+                {missingInPhase > 0 && (
+                  <span
+                    aria-hidden
+                    data-testid={`chip-missing-${p.id}`}
+                    className={`inline-block h-1.5 w-1.5 rounded-full ${
+                      active ? 'bg-red-300' : 'bg-red-500'
                     }`}
                   />
                 )}
@@ -868,6 +906,7 @@ export function UnitSurvey({
                   stepIndex={null}
                   hubValue={aiOrHubValue(phase.id, q.slug, null)}
                   justFilled={isJustFilled(phase.id, q.slug, null)}
+                  missing={missingFor(q)}
                   answers={answers}
                   onChange={onChange}
                   setNotes={setNotes}
