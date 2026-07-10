@@ -1,4 +1,7 @@
 import { localDb, type OutboxJob } from './db';
+// handlers.ts imports from this module TYPE-ONLY (JobHandlers), so this static
+// import creates no runtime cycle.
+import { createHandlers } from './handlers';
 
 export type JobHandlers = Record<OutboxJob['kind'], (payload: unknown) => Promise<void>>;
 
@@ -9,6 +12,36 @@ export async function enqueue(kind: OutboxJob['kind'], payload: unknown): Promis
     created_at: Date.now(),
     attempts: 0,
   });
+  scheduleDrain();
+}
+
+// Debounced instant push (#12, decided 2026-07-09): every enqueue schedules a
+// drain ~1.5 s out, resetting on each new job, so an answer reaches the hub
+// moments after entry while burst typing / aiFill loops collapse into ONE
+// drain. Lives HERE (not in useSyncEngine) so it fires from every call site,
+// including plain-TS ones (resumeOrStartVisit, aiFill) and pages with no
+// engine mounted. Offline, we schedule nothing — the engine's `online` event
+// and 30 s interval remain the retry/fallback path, and drainOutbox's
+// single-flight lock makes any overlap with those triggers harmless.
+export const DRAIN_DEBOUNCE_MS = 1500;
+let drainTimer: ReturnType<typeof setTimeout> | undefined;
+
+export function scheduleDrain(delayMs: number = DRAIN_DEBOUNCE_MS): void {
+  if (typeof window === 'undefined') return; // SSR safety
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+  if (drainTimer !== undefined) clearTimeout(drainTimer);
+  drainTimer = setTimeout(() => {
+    drainTimer = undefined;
+    drainOutbox(createHandlers()).catch((err) =>
+      console.error('[fv-sync] debounced drain failed', err),
+    );
+  }, delayMs);
+}
+
+// Test hook — pending debounce timers must not leak across tests.
+export function cancelScheduledDrain(): void {
+  if (drainTimer !== undefined) clearTimeout(drainTimer);
+  drainTimer = undefined;
 }
 
 // Re-ensure the hub has the parent inspection row for an open survey. The

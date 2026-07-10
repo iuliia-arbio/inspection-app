@@ -16,6 +16,13 @@ import { localDb } from './src/lib/firstVisit/db';
 // empty database regardless of what ran before it. We open the DB first (a
 // no-op if already open) so the table-clear is safe even on the very first test.
 beforeEach(async () => {
+  // A debounce timer scheduled by enqueue() in one test must never fire
+  // mid-later-test and drain the (freshly reseeded) outbox behind its back.
+  // Imported DYNAMICALLY (not at the top of this setup file): a static import
+  // here would load sync.ts → handlers.ts into the module cache before any
+  // test file's vi.mock('../handlers') registers, silently unmocking it.
+  const { cancelScheduledDrain } = await import('./src/lib/firstVisit/sync');
+  cancelScheduledDrain();
   if (!localDb.isOpen()) {
     await localDb.open();
   }
