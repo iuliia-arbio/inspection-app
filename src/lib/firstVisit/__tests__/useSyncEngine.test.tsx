@@ -56,4 +56,40 @@ describe('useSyncEngine', () => {
     await waitFor(() => expect(result.current.pending).toBe(0));
     expect(result.current.stuck).toBe(0);
   });
+
+  it('overlapping syncNow calls JOIN the in-flight drain — the second resolves only after the drain completes', async () => {
+    // Regression: syncNow used to early-return while its own drain was
+    // mid-flight, so confirmSubmit's `await syncNow()` could resolve without
+    // draining, count in-transit jobs, and flash a false-positive gate.
+    let release!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const handler = vi.fn().mockImplementation(() => gate);
+    await localDb.outbox.add({
+      kind: 'answer_upsert',
+      payload: { inspection_id: 'i1' },
+      created_at: 1,
+      attempts: 0,
+    });
+    const { result } = renderHook(() =>
+      useSyncEngine({ answer_upsert: handler } as unknown as JobHandlers),
+    );
+    // The on-mount drain is now in-flight, blocked on the gate.
+    await waitFor(() => expect(handler).toHaveBeenCalledOnce());
+
+    let resolved = false;
+    const p = result.current.syncNow().then(() => {
+      resolved = true;
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(resolved).toBe(false); // must wait on the shared drain, not no-op
+
+    release();
+    await act(async () => {
+      await p;
+    });
+    expect(resolved).toBe(true);
+    expect(await localDb.outbox.count()).toBe(0);
+  });
 });

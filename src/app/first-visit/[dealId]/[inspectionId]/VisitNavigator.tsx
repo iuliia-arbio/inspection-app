@@ -911,7 +911,7 @@ function SubmitDialog({
             {pendingSync > 0 && (
               <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
                 <span>
-                  {pendingSync} answer{pendingSync === 1 ? " hasn't" : "s haven't"} reached
+                  {pendingSync} change{pendingSync === 1 ? " hasn't" : "s haven't"} reached
                   the hub yet.
                 </span>
                 <button

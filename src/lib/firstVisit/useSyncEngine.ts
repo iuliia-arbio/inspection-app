@@ -18,26 +18,28 @@ export function useSyncEngine(handlers: JobHandlers): {
   const [syncing, setSyncing] = useState(false);
   const online = useOnlineStatus();
 
-  // Keep the handlers and the in-flight flag in refs so the public
-  // `syncNow` identity is stable across renders. Without this, every
-  // setSyncing(true) rebuilds syncNow → effects that depend on syncNow
-  // refire → call syncNow again → infinite "syncing…" flicker.
+  // Keep the handlers in a ref so the public `syncNow` identity is stable
+  // across renders. Without this, every setSyncing(true) rebuilds syncNow →
+  // effects that depend on syncNow refire → call syncNow again → infinite
+  // "syncing…" flicker.
   const handlersRef = useRef(handlers);
   handlersRef.current = handlers;
-  const inFlight = useRef(false);
 
   const refresh = useCallback(async () => {
     setStats(await outboxStats());
   }, []);
 
   const syncNow = useCallback(async () => {
-    if (inFlight.current) return;
-    inFlight.current = true;
+    // No duplicate-suppression here: drainOutbox is single-flight and returns
+    // the shared in-flight promise, so concurrent callers JOIN the running
+    // drain instead of starting a second one. The old early-return let
+    // confirmSubmit's `await syncNow()` resolve mid-drain, count in-transit
+    // jobs, and flash a false-positive submit gate that self-healed a second
+    // later.
     setSyncing(true);
     try {
       await drainOutbox(handlersRef.current);
     } finally {
-      inFlight.current = false;
       setSyncing(false);
       await refresh();
     }

@@ -195,9 +195,9 @@ describe('VisitNavigator submit flow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Submit visit' }));
     const dialog = await screen.findByRole('dialog');
-    // Gate copy (decision: "X answers haven't reached the hub yet"):
+    // Gate copy (decision: "X changes haven't reached the hub yet" — counts media/targets too, not just answers):
     expect(
-      await within(dialog).findByText(/2 answers haven't reached the hub yet/i),
+      await within(dialog).findByText(/2 changes haven't reached the hub yet/i),
     ).toBeInTheDocument();
     // Never hard-blocked: an explicit override is offered instead of the plain confirm.
     expect(within(dialog).getByRole('button', { name: /Submit anyway/i })).toBeInTheDocument();
@@ -236,7 +236,7 @@ describe('VisitNavigator submit flow', () => {
     pendingCountMock.mockResolvedValue(1); // by confirm time, a job is stuck
     fireEvent.click(within(dialog).getByRole('button', { name: 'Submit visit' }));
     expect(
-      await within(dialog).findByText(/1 answer hasn't reached the hub yet/i),
+      await within(dialog).findByText(/1 change hasn't reached the hub yet/i),
     ).toBeInTheDocument();
     // NOT submitted:
     expect((await localDb.inspections.get(INSPECTION))?.status).toBe('draft');
