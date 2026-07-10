@@ -345,6 +345,60 @@ export default function VisitNavigator({
     setRenamingPropertyId(null);
   };
 
+  // E2: every property starts with at least one unit, so the inspector never
+  // faces an empty property they must remember to populate. A hub property
+  // adopts its FIRST hub unit (real hub identity + hub name). Otherwise we
+  // mint a real hub unit_category named "Unit 1" first — unit answers need a
+  // unit_category_id to resolve their hub scope on submit, so a purely-local
+  // default would collect answers that can never sync. If that POST fails
+  // (offline / hub error) we skip seeding silently: the property still lands
+  // and the inspector adds a unit manually, exactly like today.
+  const autoSeedUnit = async (property: LocalTarget) => {
+    // Idempotence: only seed a property with ZERO units (guards re-adds and
+    // double-fires). Read Dexie directly — the `targets` state snapshot is
+    // stale inside this async add flow.
+    const rows = await localDb.targets
+      .where('inspection_id')
+      .equals(inspectionId)
+      .toArray();
+    if (rows.some((t) => t.kind === 'unit' && t.parent_id === property.id)) return;
+
+    const hubUnit = (snapshot?.units ?? []).find(
+      (u) => u.location_id === property.location_id,
+    );
+    let seed: Pick<LocalTarget, 'unit_category_id' | 'label' | 'created_on_site'>;
+    if (hubUnit) {
+      seed = {
+        unit_category_id: hubUnit.id,
+        label: unitLabel(hubUnit),
+        created_on_site: false,
+      };
+    } else {
+      if (!property.location_id) return;
+      const res = await fetch(
+        `/api/first-visit/deals/${dealId}/locations/${property.location_id}/units`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ category_type: 'Unit 1' }),
+        },
+      ).catch(() => null);
+      if (!res?.ok) return;
+      const { unit } = await res.json();
+      seed = { unit_category_id: unit.id, label: 'Unit 1', created_on_site: true };
+    }
+    const t: LocalTarget = {
+      id: crypto.randomUUID(),
+      inspection_id: inspectionId,
+      kind: 'unit',
+      parent_id: property.id,
+      ...seed,
+      order: 0,
+    };
+    track('unit_added', { from: 'auto_seed' });
+    await persistTarget(t);
+  };
+
   const addPropertyFromHub = async (loc: HubLocation) => {
     const t: LocalTarget = {
       id: crypto.randomUUID(),
@@ -357,6 +411,7 @@ export default function VisitNavigator({
     };
     track('property_added', { from: 'hub' });
     await persistTarget(t);
+    await autoSeedUnit(t);
     setAdding(null);
   };
 
@@ -382,6 +437,7 @@ export default function VisitNavigator({
     };
     track('property_added', { from: 'on_site' });
     await persistTarget(t);
+    await autoSeedUnit(t);
     setAdding(null);
   };
 
