@@ -34,13 +34,26 @@ export function requiredVisible(
 // scope-level required by isScopeLevelRequired). LOCAL media only for now: a
 // cloud-restored device has hub metadata but no local media rows, so its file
 // questions read as missing — known limitation until remote media is wired in.
+// The ONE home for the precedence rule: an answered value — including a skip
+// marker, which isAnswered treats as terminal — always wins; media only ever
+// ADDS "done" for file questions, never replaces the value check. Exported so
+// UI callers that key answers differently (UnitSurvey's ring, section dots,
+// skip-to-incomplete — and Batch E's missing-field highlighting) share it.
+export function isAnsweredValueOrMedia(
+  q: FirstVisitQuestion,
+  value: unknown,
+  mediaKeys: Set<string> | undefined,
+): boolean {
+  if (isAnswered(value)) return true;
+  return q.type === 'file' && !!mediaKeys?.has(q.slug);
+}
+
 function isAnsweredWithMedia(
   q: FirstVisitQuestion,
   a: LocalAnswer | undefined,
   mediaKeys: Set<string> | undefined,
 ): boolean {
-  if (a && isAnswered(a.value)) return true;
-  return q.type === 'file' && !!mediaKeys?.has(q.slug);
+  return isAnsweredValueOrMedia(q, a?.value, mediaKeys);
 }
 
 // Count required questions for a scope and how many are answered at the given

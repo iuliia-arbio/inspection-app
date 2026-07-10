@@ -15,7 +15,7 @@ import { RepeaterStub } from '@/components/firstVisit/PrefilledField';
 import { MediaButtons } from '@/components/firstVisit/MediaButtons';
 import { AttachAffordance } from '@/components/firstVisit/AttachAffordance';
 import { CopyFromUnitTrigger } from '@/components/firstVisit/CopyFromUnitTrigger';
-import { ProgressRing, isAnswered } from '@/components/firstVisit/ProgressRing';
+import { ProgressRing } from '@/components/firstVisit/ProgressRing';
 import { StepGroup, QuestionRow } from '@/components/firstVisit/StepGroup';
 import { localDb, type LocalAnswer } from '@/lib/firstVisit/db';
 import { enqueue } from '@/lib/firstVisit/sync';
@@ -27,7 +27,7 @@ import {
 } from '@/lib/firstVisit/resolveScope';
 import { lookupHubValue, type HubSnapshot } from '@/lib/firstVisit/snapshot';
 import { repeaterGroupMeta } from '@/lib/firstVisit/repeaterGroups';
-import { requiredVisible } from '@/lib/firstVisit/progress';
+import { isAnsweredValueOrMedia, requiredVisible } from '@/lib/firstVisit/progress';
 import { track } from '@/lib/firstVisit/analytics';
 import { VoicePromptCard, VoiceSummaryChip } from '@/components/firstVisit/SectionVoicePrompts';
 import { WifiSpeedTest } from '@/components/firstVisit/WifiSpeedTest';
@@ -473,11 +473,8 @@ export function UnitSurvey({
     const required = requiredVisible([...inPhases, ...allAnchoredInScope], valueByKey);
     const done = required.filter((q) => {
       const key = `${target.id}::${areaKeyFor(q)}::${q.slug}`;
-      return (
-        isAnswered(answers[key]?.value) ||
-        // File questions are answered by captured media, not an answer row.
-        (q.type === 'file' && mediaKeys.has(q.slug))
-      );
+      // File questions are answered by captured media, not an answer row.
+      return isAnsweredValueOrMedia(q, answers[key]?.value, mediaKeys);
     }).length;
     return { done, total: required.length };
   }, [phases, allAnchoredInScope, answers, target.id, valueByKey, mediaKeys]);
@@ -507,10 +504,7 @@ export function UnitSurvey({
       // dependent must not make a phase look perpetually incomplete.
       return requiredVisible([...own, ...anchored], valueByKey).some((q) => {
         const key = `${target.id}::${areaKeyFor(q)}::${q.slug}`;
-        return !(
-          isAnswered(answers[key]?.value) ||
-          (q.type === 'file' && mediaKeys.has(q.slug))
-        );
+        return !isAnsweredValueOrMedia(q, answers[key]?.value, mediaKeys);
       });
     };
     for (let i = currentIdx + 1; i < phases.length; i++) {
@@ -653,10 +647,7 @@ export function UnitSurvey({
             );
             const doneInPhase = reqInPhase.filter((q) => {
               const key = `${target.id}::${areaKeyFor(q)}::${q.slug}`;
-              return (
-                isAnswered(answers[key]?.value) ||
-                (q.type === 'file' && mediaKeys.has(q.slug))
-              );
+              return isAnsweredValueOrMedia(q, answers[key]?.value, mediaKeys);
             }).length;
             const phaseComplete = reqInPhase.length > 0 && doneInPhase === reqInPhase.length;
 

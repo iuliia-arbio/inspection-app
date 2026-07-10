@@ -338,6 +338,29 @@ describe('media-answered file questions (mediaKeys)', () => {
     expect(withUnrelated.done).toBe(0);
   });
 
+  it('a skip-marker answer keeps a file question done with EMPTY mediaKeys', () => {
+    // Precedence guard: the answered-value check (skip markers count — the
+    // inspector dealt with the question) must run for file questions too. A
+    // refactor to "file ? media-only : value-only" would break skipped photos.
+    const answers = [
+      makeAnswer('photo_q', { __skipped: true, reason: 'No access' }),
+    ];
+    const p = computeProgressFromAnswers(
+      'location', answers, undefined, phases, new Set<string>(),
+    );
+    expect(p.total).toBe(2);
+    expect(p.done).toBe(1);
+    // And the submit dialog's remaining list agrees.
+    const remaining = remainingRequiredForTarget({
+      label: 'Prop',
+      scope: 'location' as HubScope,
+      answers,
+      phases,
+      mediaKeys: new Set<string>(),
+    });
+    expect(remaining.map((q) => q.slug)).not.toContain('photo_q');
+  });
+
   it('does NOT let a media key satisfy a non-file required question', () => {
     const p = computeProgressFromAnswers(
       'location', [], undefined, phases, new Set(['text_q']),
