@@ -1,8 +1,11 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { localDb, type LocalInspection, type LocalAnswer } from '@/lib/firstVisit/db';
 import { restoreFromCloud } from '@/lib/firstVisit/restore';
+import { createHandlers } from '@/lib/firstVisit/handlers';
+import { useSyncEngine } from '@/lib/firstVisit/useSyncEngine';
+import { SyncBadge } from '@/components/firstVisit/SyncBadge';
 
 type DealRow = { id: string; name?: string };
 
@@ -42,6 +45,13 @@ function formatWhen(iso: string): string {
 export default function MyVisits() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [offline, setOffline] = useState(false);
+  // Full engine, not a one-shot drain: jobs enqueued elsewhere (DealPicker's
+  // inspection_upsert, deletes made in the navigator) used to sit until a
+  // survey opened; the engine's on-mount drain + 30 s interval + focus/online
+  // triggers retry them from the list too. drainOutbox is single-flight, so
+  // this second engine can't double-drain against an open navigator.
+  const handlers = useMemo(() => createHandlers(), []);
+  const { pending, stuck, lastError, syncNow } = useSyncEngine(handlers);
 
   const load = useCallback(async () => {
     // Hydrate from the hub first so this device has every staff visit, then
@@ -90,6 +100,9 @@ export default function MyVisits() {
   }
   return (
     <div className="mt-2">
+      <div className="mb-2 flex justify-end">
+        <SyncBadge pending={pending} stuck={stuck} lastError={lastError} onRetry={syncNow} />
+      </div>
       {offline && (
         <p className="mb-2 text-xs text-amber-600">
           Couldn’t reach the hub — showing visits stored on this device.
