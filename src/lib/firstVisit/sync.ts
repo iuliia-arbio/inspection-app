@@ -32,7 +32,35 @@ export async function ensureInspectionQueued(inspectionId: string): Promise<void
   await enqueue('inspection_upsert', insp);
 }
 
-export async function drainOutbox(handlers: JobHandlers): Promise<void> {
+// Single-flight drain. Multiple triggers can now race (30 s interval, focus,
+// online, manual Sync now, the debounced drain-on-enqueue, and TWO mounted
+// engines once MyVisits gets one). Two concurrent drains read the same job
+// list before either deletes → double execution; media_upload ends in a plain
+// INSERT on the hub, so a double-drain literally duplicates media rows. One
+// drain runs at a time; a call arriving mid-drain requests exactly one rerun
+// so jobs enqueued during the pass aren't stranded until the next trigger.
+let drainInFlight: Promise<void> | null = null;
+let drainRerun = false;
+
+export function drainOutbox(handlers: JobHandlers): Promise<void> {
+  if (drainInFlight) {
+    drainRerun = true;
+    return drainInFlight;
+  }
+  drainInFlight = (async () => {
+    try {
+      do {
+        drainRerun = false;
+        await drainOnce(handlers);
+      } while (drainRerun);
+    } finally {
+      drainInFlight = null;
+    }
+  })();
+  return drainInFlight;
+}
+
+async function drainOnce(handlers: JobHandlers): Promise<void> {
   const jobs = await localDb.outbox.orderBy('created_at').toArray();
   for (const job of jobs) {
     const handler = handlers[job.kind];
