@@ -21,8 +21,15 @@ beforeEach(async () => {
   // Imported DYNAMICALLY (not at the top of this setup file): a static import
   // here would load sync.ts → handlers.ts into the module cache before any
   // test file's vi.mock('../handlers') registers, silently unmocking it.
-  const { cancelScheduledDrain } = await import('./src/lib/firstVisit/sync');
-  cancelScheduledDrain();
+  // Files that vi.mock sync itself get their mock here (which may lack this
+  // export — vitest throws on missing mock exports); their mocked enqueue
+  // never schedules a real timer, so skipping the cancel is safe.
+  try {
+    const sync = await import('./src/lib/firstVisit/sync');
+    sync.cancelScheduledDrain();
+  } catch {
+    /* sync is mocked in this file — no real debounce timer exists */
+  }
   if (!localDb.isOpen()) {
     await localDb.open();
   }
