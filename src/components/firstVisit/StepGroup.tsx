@@ -2,7 +2,11 @@
 import { useMemo, useState } from 'react';
 import type { FirstVisitQuestion } from '@/lib/firstVisit/questions';
 import type { LocalAnswer } from '@/lib/firstVisit/db';
-import { PrefilledField } from '@/components/firstVisit/PrefilledField';
+import {
+  MISSING_REQUIRED_TEXT,
+  missingBorderCls,
+  PrefilledField,
+} from '@/components/firstVisit/PrefilledField';
 import { MediaButtons } from '@/components/firstVisit/MediaButtons';
 import { SkipAffordance } from '@/components/firstVisit/SkipAffordance';
 import { AttachAffordance } from '@/components/firstVisit/AttachAffordance';
@@ -298,13 +302,7 @@ export function QuestionRow({
         // applied on this container instead (amber left border live, red after
         // a submit attempt).
         <div
-          className={`flex flex-col gap-2 p-2 ${
-            missing === 'subtle'
-              ? 'border-l-2 border-amber-300'
-              : missing === 'strong'
-                ? 'border-l-2 border-red-500'
-                : ''
-          }`}
+          className={`flex flex-col gap-2 p-2 ${missingBorderCls(missing)}`}
           data-missing={missing}
         >
           <label className="text-sm font-medium">
@@ -364,6 +362,9 @@ export function QuestionRow({
                 )
               }
             />
+          )}
+          {missing === 'strong' && (
+            <p className="text-xs font-medium text-red-600">{MISSING_REQUIRED_TEXT}</p>
           )}
         </div>
       ) : question.type === 'file' ? (

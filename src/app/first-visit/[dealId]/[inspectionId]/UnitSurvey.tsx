@@ -11,7 +11,11 @@ import {
   type FirstVisitQuestion,
 } from '@/lib/firstVisit/questions';
 import { useSurveyConfig } from '@/lib/firstVisit/SurveyConfigContext';
-import { RepeaterStub } from '@/components/firstVisit/PrefilledField';
+import {
+  MISSING_REQUIRED_TEXT,
+  missingBorderCls,
+  RepeaterStub,
+} from '@/components/firstVisit/PrefilledField';
 import { MediaButtons } from '@/components/firstVisit/MediaButtons';
 import { AttachAffordance } from '@/components/firstVisit/AttachAffordance';
 import { CopyFromUnitTrigger } from '@/components/firstVisit/CopyFromUnitTrigger';
@@ -51,7 +55,7 @@ export function UnitSurvey({
   onBack,
   breadcrumb,
   phaseIds,
-  submitAttempted,
+  submitAttempt,
 }: {
   inspectionId: string;
   target: SurveyTarget;
@@ -61,12 +65,17 @@ export function UnitSurvey({
   onBack: () => void;
   breadcrumb?: string[];
   phaseIds?: string[];
-  // Batch E1: true once the inspector has opened the submit dialog (state
-  // lives in VisitNavigator and persists for the session). Escalates the
-  // missing-required cue from a subtle amber hint to red + aria-invalid, and
-  // flags section chips that still have outstanding required questions.
-  submitAttempted?: boolean;
+  // Batch E1: number of submit attempts so far this session (0/undefined =
+  // none; state lives in VisitNavigator and persists for the session). Any
+  // attempt escalates the missing-required cue from a subtle amber hint to
+  // red + aria-invalid and flags section chips with outstanding required
+  // questions; each NEW attempt additionally auto-navigates this survey to
+  // the first phase that still has missing required work — exactly once per
+  // attempt (the counter is consumed, so re-renders and chip taps never yank
+  // the inspector back).
+  submitAttempt?: number;
 }) {
+  const submitAttempted = (submitAttempt ?? 0) > 0;
   const { phases: configPhases } = useSurveyConfig();
   const [answers, setAnswers] = useState<Record<string, LocalAnswer>>({});
   // Keys of fields just populated by a voice fill — drives the transient
@@ -534,6 +543,50 @@ export function UnitSurvey({
     return null;
   }, [phases, anchoredByAnchorPhase, answers, target.id, currentIdx, valueByKey, mediaKeys]);
 
+  // Batch E1 follow-up: guide to the first missing section. When a survey
+  // opens (or re-keys to a new target) after a submit attempt, jump to the
+  // FIRST phase that still has visible required work. Once per attempt: the
+  // attempt counter is consumed via lastJumpedAttemptRef, so re-renders and
+  // manual chip navigation never yank the inspector back. Reads Dexie
+  // directly (not the answers/mediaKeys state) so a fresh mount can't
+  // mis-jump before the async state loads; fully-answered surveys stay put.
+  const lastJumpedAttemptRef = useRef(0);
+  useEffect(() => {
+    const attempt = submitAttempt ?? 0;
+    if (attempt === 0 || lastJumpedAttemptRef.current >= attempt) return;
+    lastJumpedAttemptRef.current = attempt;
+    let alive = true;
+    (async () => {
+      const [answerRows, mediaRows] = await Promise.all([
+        localDb.answers.where('target_id').equals(target.id).toArray(),
+        localDb.media.where('inspection_id').equals(inspectionId).toArray(),
+      ]);
+      if (!alive) return;
+      const mediaSlugSet = new Set<string>();
+      for (const m of mediaRows) {
+        if (m.target_id === target.id && m.question_key) {
+          mediaSlugSet.add(m.question_key);
+        }
+      }
+      // Single-instance slug → value map; enough for both visibility and the
+      // answered check (repeater members are never scope-level required).
+      const valueBySlug = new Map<string, unknown>();
+      for (const r of answerRows) {
+        if (r.step_index == null) valueBySlug.set(r.question_key, r.value);
+      }
+      const idx = phases.findIndex((p) => {
+        const anchored = anchoredByAnchorPhase.get(p.id) ?? [];
+        return requiredVisible([...p.questions, ...anchored], valueBySlug).some(
+          (q) => !isAnsweredValueOrMedia(q, valueBySlug.get(q.slug), mediaSlugSet),
+        );
+      });
+      if (idx >= 0) setCurrentIdx(idx);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [submitAttempt, phases, anchoredByAnchorPhase, target.id, inspectionId]);
+
   if (phases.length === 0) {
     return (
       <main className="mx-auto max-w-md p-6">
@@ -844,11 +897,19 @@ export function UnitSurvey({
             }
 
             if (q.type === 'file') {
+              // Missing-required cue on the capture container: the required
+              // file slugs are the most-skipped fields, so they get the same
+              // amber/red treatment as inputs (plus the non-color-only helper
+              // text when strong). Media counts as answered via missingFor.
+              const fileMissing = missingFor(q);
               return (
                 <Fragment key={key}>
                   {voiceCardFor([q.slug])}
                   <div className="flex flex-col gap-3">
-                  <div className="flex flex-col gap-1">
+                  <div
+                    className={`flex flex-col gap-1 ${missingBorderCls(fileMissing)}`}
+                    data-missing={fileMissing}
+                  >
                     <MediaButtons
                       inspectionId={inspectionId}
                       targetId={target.id}
@@ -859,6 +920,11 @@ export function UnitSurvey({
                       description={q.description}
                       required={q.required}
                     />
+                    {fileMissing === 'strong' && (
+                      <p className="text-xs font-medium text-red-600">
+                        {MISSING_REQUIRED_TEXT}
+                      </p>
+                    )}
                     <AttachAffordance
                       inspectionId={inspectionId}
                       targetId={target.id}

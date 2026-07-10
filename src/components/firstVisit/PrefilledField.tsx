@@ -30,6 +30,20 @@ export type PrefilledFieldProps = {
 // Below this, an AI-suggested value is flagged for closer review.
 const LOW_CONF_THRESHOLD = 0.6;
 
+// Shared missing-required border treatment (Batch E1): calm amber left border
+// while the inspector works, red after a submit attempt. One home so this
+// component, the multi-select container (StepGroup) and the file-question
+// wrapper (UnitSurvey) stay visually in sync.
+export function missingBorderCls(missing?: 'subtle' | 'strong'): string {
+  if (missing === 'subtle') return 'border-l-2 border-amber-300';
+  if (missing === 'strong') return 'border-l-2 border-red-500';
+  return '';
+}
+
+// WCAG 1.4.1 (use of color): the strong state must not be color-only, so it
+// always carries this one-line helper text. Shared copy for every strong cue.
+export const MISSING_REQUIRED_TEXT = 'Required — not filled in';
+
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -250,19 +264,19 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
   }
 
   // Missing-required styling: an amber left border keeps the live cue calm;
-  // after a submit attempt the border turns red and the concrete inputs gain
-  // aria-invalid + a red outline. Purely visual — input is never blocked.
+  // after a submit attempt the border turns red, the concrete inputs gain
+  // aria-invalid + a red outline, and a helper text under the field states
+  // the problem in words (WCAG 1.4.1 — not color-only), wired to the input
+  // via aria-describedby. Input is never blocked.
   const missingStrong = missing === 'strong';
-  const missingCls =
-    missing === 'subtle'
-      ? 'border-l-2 border-amber-300'
-      : missingStrong
-        ? 'border-l-2 border-red-500'
-        : '';
   const inputBorderCls = missingStrong ? 'border-red-500' : 'border-gray-300';
+  const missingTextId = missingStrong ? `${id}-missing` : undefined;
 
   return (
-    <div className={`relative flex flex-col gap-1 p-2 ${missingCls}`} data-missing={missing}>
+    <div
+      className={`relative flex flex-col gap-1 p-2 ${missingBorderCls(missing)}`}
+      data-missing={missing}
+    >
       {/* Saved confirmation pulse — small, emerald, fades out. Lives inside the
           main field container so the skipped early-return never renders it. */}
       <span
@@ -319,6 +333,7 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
               ref={textInput.ref as (el: HTMLInputElement | null) => void}
               disabled={isTranscribing}
               aria-invalid={missingStrong || undefined}
+              aria-describedby={missingTextId}
               className={`w-full rounded-md border ${inputBorderCls} px-3 py-2 pr-11 text-base disabled:bg-gray-50 disabled:opacity-60`}
               defaultValue={textInput.defaultValue}
               onChange={(e) => textInput.onChange(e.target.value)}
@@ -332,6 +347,7 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
               onChange={emitText}
               className="pr-11"
               invalid={missingStrong}
+              describedBy={missingTextId}
             />
           )}
           <VoiceDictation
@@ -350,6 +366,7 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
           type="number"
           inputMode="numeric"
           aria-invalid={missingStrong || undefined}
+          aria-describedby={missingTextId}
           className={`rounded-md border ${inputBorderCls} px-3 py-2 text-base`}
           value={value == null ? '' : String(value)}
           onChange={(e) => {
@@ -366,6 +383,7 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
           id={id}
           type="date"
           aria-invalid={missingStrong || undefined}
+          aria-describedby={missingTextId}
           className={`rounded-md border ${inputBorderCls} px-3 py-2 text-base`}
           value={value == null ? '' : String(value)}
           onChange={(e) => {
@@ -378,6 +396,7 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
         <select
           id={id}
           aria-invalid={missingStrong || undefined}
+          aria-describedby={missingTextId}
           className={`rounded-md border ${inputBorderCls} px-3 py-2 text-base`}
           value={value == null ? '' : String(value)}
           onChange={(e) => {
@@ -409,6 +428,7 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
             id={id}
             aria-label={question.label}
             aria-invalid={missingStrong || undefined}
+            aria-describedby={missingTextId}
           />
           <button
             type="button"
@@ -442,6 +462,11 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
           </button>
         </div>
       )}
+      {missingStrong && (
+        <p id={missingTextId} className="text-xs font-medium text-red-600">
+          {MISSING_REQUIRED_TEXT}
+        </p>
+      )}
     </div>
   );
 }
@@ -463,6 +488,7 @@ function AutoGrowTextarea({
   disabled,
   className,
   invalid,
+  describedBy,
 }: {
   id: string;
   value: string;
@@ -472,6 +498,8 @@ function AutoGrowTextarea({
   // Strong missing-required state: red border + aria-invalid. Owned here (not
   // via className) so the border class swaps cleanly instead of conflicting.
   invalid?: boolean;
+  // id of the missing-required helper text, wired via aria-describedby.
+  describedBy?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement | null>(null);
   const resize = useCallback(() => {
@@ -500,6 +528,7 @@ function AutoGrowTextarea({
       rows={3}
       disabled={disabled}
       aria-invalid={invalid || undefined}
+      aria-describedby={describedBy}
       className={`min-h-[5.25rem] w-full resize-none overflow-hidden rounded-md border ${
         invalid ? 'border-red-500' : 'border-gray-300'
       } px-3 py-2 text-base disabled:bg-gray-50 disabled:opacity-60 ${className ?? ''}`}

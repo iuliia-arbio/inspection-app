@@ -128,11 +128,13 @@ export default function VisitNavigator({
   const [submitState, setSubmitState] = useState<'idle' | 'confirming' | 'submitted'>(
     'idle',
   );
-  // Batch E1: once the inspector opens the submit dialog, missing required
-  // fields escalate from the subtle live cue to a strong red + aria-invalid
-  // state. Persists for the session (this component stays mounted while a
-  // target's survey is open, so the flag threads down as a plain prop).
-  const [submitAttempted, setSubmitAttempted] = useState(false);
+  // Batch E1: counts submit attempts (opening the submit dialog). Any attempt
+  // escalates missing required fields from the subtle live cue to a strong
+  // red + aria-invalid state; each NEW attempt lets an opened survey jump to
+  // its first missing section exactly once (UnitSurvey consumes the counter).
+  // Persists for the session — this component stays mounted while a target's
+  // survey is open, so it threads down as a plain prop.
+  const [submitAttempt, setSubmitAttempt] = useState(0);
   const handlers = useMemo(() => createHandlers(), []);
   const { pending, syncNow, syncing } = useSyncEngine(handlers);
   const { phases: configPhases } = useSurveyConfig();
@@ -568,7 +570,7 @@ export default function VisitNavigator({
         }}
         breadcrumb={breadcrumb}
         phaseIds={phaseIds}
-        submitAttempted={submitAttempted}
+        submitAttempt={submitAttempt}
       />
     );
   }
@@ -761,7 +763,7 @@ export default function VisitNavigator({
 
       <button
         onClick={() => {
-          setSubmitAttempted(true);
+          setSubmitAttempt((n) => n + 1);
           setSubmitState('confirming');
         }}
         className="mt-6 w-full rounded-md bg-black px-4 py-3 text-white"
