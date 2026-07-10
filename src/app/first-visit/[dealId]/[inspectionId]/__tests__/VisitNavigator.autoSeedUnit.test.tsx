@@ -6,12 +6,19 @@ import { localDb } from '@/lib/firstVisit/db';
 // Keep the sync engine inert — these tests are about the auto-seeded child
 // unit that every new property must start with, not the outbox.
 vi.mock('@/lib/firstVisit/useSyncEngine', () => ({
-  useSyncEngine: () => ({ pending: 0, syncing: false, syncNow: vi.fn().mockResolvedValue(undefined) }),
+  useSyncEngine: () => ({
+    pending: 0,
+    stuck: 0,
+    lastError: undefined,
+    syncing: false,
+    syncNow: vi.fn().mockResolvedValue(undefined),
+  }),
   useOnlineStatus: () => true,
 }));
 vi.mock('@/lib/firstVisit/sync', () => ({
   enqueue: vi.fn().mockResolvedValue(undefined),
   ensureInspectionQueued: vi.fn().mockResolvedValue(undefined),
+  pendingCountForInspection: vi.fn().mockResolvedValue(0),
 }));
 vi.mock('@/lib/firstVisit/analytics', () => ({ track: vi.fn() }));
 vi.mock('@/lib/firstVisit/export', () => ({ downloadInspectionZip: vi.fn() }));

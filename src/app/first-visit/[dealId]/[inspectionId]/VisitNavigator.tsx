@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { localDb, type LocalAnswer, type LocalInspection, type LocalMedia, type LocalTarget } from '@/lib/firstVisit/db';
-import { enqueue, ensureInspectionQueued } from '@/lib/firstVisit/sync';
+import { enqueue, ensureInspectionQueued, pendingCountForInspection } from '@/lib/firstVisit/sync';
 import { useSyncEngine } from '@/lib/firstVisit/useSyncEngine';
 import { createHandlers } from '@/lib/firstVisit/handlers';
 import { type HubSnapshot } from '@/lib/firstVisit/snapshot';
@@ -135,8 +135,15 @@ export default function VisitNavigator({
   // Persists for the session — this component stays mounted while a target's
   // survey is open, so it threads down as a plain prop.
   const [submitAttempt, setSubmitAttempt] = useState(0);
+  // Soft submit gate (decided 2026-07-09): count of THIS inspection's outbox
+  // jobs that haven't reached the hub. Checked when the dialog opens (with a
+  // background drain that usually clears it before the inspector confirms) and
+  // again on confirm (drain → re-check → submit or show the gate). Never a hard
+  // block — "Submit anyway" always works, and Batch C's re-runnable submit
+  // heals any stragglers on the next re-submit.
+  const [pendingSync, setPendingSync] = useState(0);
   const handlers = useMemo(() => createHandlers(), []);
-  const { pending, syncNow, syncing } = useSyncEngine(handlers);
+  const { pending, stuck, lastError, syncNow, syncing } = useSyncEngine(handlers);
   const { phases: configPhases } = useSurveyConfig();
 
   // Re-ensure the hub has this inspection's parent row. If its original
@@ -511,11 +518,33 @@ export default function VisitNavigator({
     setSelected({ kind: 'unit', target: u, property });
   };
 
-  const confirmSubmit = async () => {
+  const refreshPendingSync = useCallback(async () => {
+    const n = await pendingCountForInspection(inspectionId);
+    setPendingSync(n);
+    return n;
+  }, [inspectionId]);
+
+  const openSubmitDialog = () => {
+    setSubmitAttempt((n) => n + 1); // Batch E contract — every attempt escalates
+    setSubmitState('confirming');
+    void refreshPendingSync();
+    // Background drain: usually clears any backlog before the inspector confirms.
+    syncNow()
+      .then(refreshPendingSync)
+      .catch((err) => console.error('[fv-sync] pre-submit drain failed', err));
+  };
+
+  const retrySync = async () => {
+    await syncNow().catch((err) => console.error('[fv-sync] retry failed', err));
+    await refreshPendingSync();
+  };
+
+  const doSubmit = async () => {
     const missing = remainingByTarget().reduce((n, g) => n + g.questions.length, 0);
     track('submit_clicked', {
       inspection_id: inspectionId,
       missing_required: missing,
+      pending_sync: pendingSync,
       resubmit: isResubmit,
     });
     await localDb.inspections.update(inspectionId, {
@@ -524,8 +553,18 @@ export default function VisitNavigator({
     });
     await enqueue('submit', { inspection_id: inspectionId });
     await reloadInspection();
-    syncNow().catch(() => {});
+    syncNow().catch((err) => console.error('[fv-sync] post-submit drain failed', err));
     setSubmitState('submitted');
+  };
+
+  const confirmSubmit = async () => {
+    await syncNow().catch((err) => console.error('[fv-sync] pre-submit drain failed', err));
+    const still = await refreshPendingSync();
+    if (still > 0) {
+      track('submit_gate_shown', { inspection_id: inspectionId, pending_sync: still });
+      return; // dialog re-renders with the gate: Retry + Submit anyway
+    }
+    await doSubmit();
   };
 
   // --- Survey view ---------------------------------------------------------
@@ -657,7 +696,7 @@ export default function VisitNavigator({
             })()}
           </div>
           <div className="flex shrink-0 items-center gap-2 text-xs">
-            <SyncBadge pending={pending} />
+            <SyncBadge pending={pending} stuck={stuck} lastError={lastError} onRetry={syncNow} />
             <button
               onClick={syncNow}
               disabled={syncing}
@@ -762,10 +801,7 @@ export default function VisitNavigator({
           a deal-level evaluation card. */}
 
       <button
-        onClick={() => {
-          setSubmitAttempt((n) => n + 1);
-          setSubmitState('confirming');
-        }}
+        onClick={openSubmitDialog}
         className="mt-6 w-full rounded-md bg-black px-4 py-3 text-white"
       >
         {isResubmit ? 'Re-submit visit' : 'Submit visit'}
@@ -776,6 +812,9 @@ export default function VisitNavigator({
           state={submitState}
           resubmit={isResubmit}
           remaining={remainingByTarget()}
+          pendingSync={pendingSync}
+          onRetrySync={retrySync}
+          onSubmitAnyway={doSubmit}
           onConfirm={confirmSubmit}
           onCancel={() => setSubmitState('idle')}
         />
@@ -794,12 +833,20 @@ function SubmitDialog({
   state,
   resubmit,
   remaining,
+  pendingSync,
+  onRetrySync,
+  onSubmitAnyway,
   onConfirm,
   onCancel,
 }: {
   state: 'confirming' | 'submitted';
   resubmit: boolean;
   remaining: RemainingGroup[];
+  // Soft sync gate: this inspection's undelivered outbox jobs. > 0 swaps the
+  // primary confirm for an explicit "Submit anyway" and shows a Retry.
+  pendingSync: number;
+  onRetrySync: () => void;
+  onSubmitAnyway: () => void;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -861,6 +908,20 @@ function SubmitDialog({
               You can reopen and edit this visit at any time — re-submitting
               updates the hub with your latest answers.
             </p>
+            {pendingSync > 0 && (
+              <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+                <span>
+                  {pendingSync} answer{pendingSync === 1 ? " hasn't" : "s haven't"} reached
+                  the hub yet.
+                </span>
+                <button
+                  onClick={onRetrySync}
+                  className="shrink-0 rounded border border-amber-400 px-2 py-1 text-xs font-medium"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
             <div className="mt-4 flex gap-2">
               <button
                 onClick={onCancel}
@@ -869,10 +930,10 @@ function SubmitDialog({
                 Keep editing
               </button>
               <button
-                onClick={onConfirm}
+                onClick={pendingSync > 0 ? onSubmitAnyway : onConfirm}
                 className="flex-1 rounded-md bg-black px-4 py-2.5 text-sm font-medium text-white"
               >
-                {submitLabel}
+                {pendingSync > 0 ? 'Submit anyway' : submitLabel}
               </button>
             </div>
           </>
