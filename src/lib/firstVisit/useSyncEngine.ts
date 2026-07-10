@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { drainOutbox, outboxCount, type JobHandlers } from './sync';
+import { drainOutbox, outboxStats, type JobHandlers, type OutboxStats } from './sync';
 import { useOnlineStatus } from './useOnlineStatus';
 
 // Re-export so existing call sites (e.g. SyncBadge) keep working without
@@ -9,10 +9,12 @@ export { useOnlineStatus };
 
 export function useSyncEngine(handlers: JobHandlers): {
   pending: number;
+  stuck: number;
+  lastError?: string;
   syncNow: () => Promise<void>;
   syncing: boolean;
 } {
-  const [pending, setPending] = useState(0);
+  const [stats, setStats] = useState<OutboxStats>({ pending: 0, stuck: 0 });
   const [syncing, setSyncing] = useState(false);
   const online = useOnlineStatus();
 
@@ -25,7 +27,7 @@ export function useSyncEngine(handlers: JobHandlers): {
   const inFlight = useRef(false);
 
   const refresh = useCallback(async () => {
-    setPending(await outboxCount());
+    setStats(await outboxStats());
   }, []);
 
   const syncNow = useCallback(async () => {
@@ -48,18 +50,22 @@ export function useSyncEngine(handlers: JobHandlers): {
     return () => clearInterval(id);
   }, [refresh]);
 
-  // Trigger a sync when we come online.
+  // Trigger a sync when we come online. Drain-level errors are logged (not
+  // swallowed) — per-JOB errors are already persisted on the outbox row and
+  // surface through the `stuck` count.
   useEffect(() => {
-    if (online) syncNow().catch(() => {});
+    if (online) syncNow().catch((err) => console.error('[fv-sync] drain failed', err));
   }, [online, syncNow]);
 
   // Periodic background drain + on-focus drain.
   useEffect(() => {
     const id = setInterval(() => {
-      if (navigator.onLine) syncNow().catch(() => {});
+      if (navigator.onLine)
+        syncNow().catch((err) => console.error('[fv-sync] drain failed', err));
     }, 30_000);
     const onFocus = () => {
-      if (navigator.onLine) syncNow().catch(() => {});
+      if (navigator.onLine)
+        syncNow().catch((err) => console.error('[fv-sync] drain failed', err));
     };
     window.addEventListener('focus', onFocus);
     return () => {
@@ -68,5 +74,11 @@ export function useSyncEngine(handlers: JobHandlers): {
     };
   }, [syncNow]);
 
-  return { pending, syncNow, syncing };
+  return {
+    pending: stats.pending,
+    stuck: stats.stuck,
+    lastError: stats.lastError,
+    syncNow,
+    syncing,
+  };
 }

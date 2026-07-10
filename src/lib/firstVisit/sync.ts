@@ -111,12 +111,6 @@ async function drainOnce(handlers: JobHandlers): Promise<void> {
   }
 }
 
-// TODO(Task 4): remove once useSyncEngine switches to outboxStats — kept so
-// tsc stays clean while useSyncEngine.ts still imports it.
-export async function outboxCount(): Promise<number> {
-  return localDb.outbox.count();
-}
-
 // A job is STUCK after 3 failed attempts — with instant push + 30 s retries
 // that's over a minute of real failure, so the badge doesn't flap on a single
 // transient blip that the next retry heals.
