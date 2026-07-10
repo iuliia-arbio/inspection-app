@@ -19,10 +19,30 @@ export type PrefilledFieldProps = {
   // Transiently true right after a voice fill lands, so the banner animates in
   // with a "from voice" tag. Additive; defaults false.
   justFilled?: boolean;
+  // Missing-required cue (Batch E1). Computed UPSTREAM (UnitSurvey) as
+  // required && currently visible && not answered — this component only
+  // renders the state. 'subtle' = calm amber left border while the inspector
+  // works; 'strong' = red border + aria-invalid after a submit attempt.
+  // Never blocks input; undefined = no cue.
+  missing?: 'subtle' | 'strong';
 };
 
 // Below this, an AI-suggested value is flagged for closer review.
 const LOW_CONF_THRESHOLD = 0.6;
+
+// Shared missing-required border treatment (Batch E1): calm amber left border
+// while the inspector works, red after a submit attempt. One home so this
+// component, the multi-select container (StepGroup) and the file-question
+// wrapper (UnitSurvey) stay visually in sync.
+export function missingBorderCls(missing?: 'subtle' | 'strong'): string {
+  if (missing === 'subtle') return 'border-l-2 border-amber-300';
+  if (missing === 'strong') return 'border-l-2 border-red-500';
+  return '';
+}
+
+// WCAG 1.4.1 (use of color): the strong state must not be color-only, so it
+// always carries this one-line helper text. Shared copy for every strong cue.
+export const MISSING_REQUIRED_TEXT = 'Required — not filled in';
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -124,7 +144,7 @@ const SAVED_VISIBLE_MS = 1200;
 // inspector pauses typing — typing every keystroke would be noisy.
 const TEXT_DEBOUNCE_MS = 600;
 
-export function PrefilledField({ question, hubValue, value, onChange, suggestionConfidence, justFilled }: PrefilledFieldProps) {
+export function PrefilledField({ question, hubValue, value, onChange, suggestionConfidence, justFilled, missing }: PrefilledFieldProps) {
   const hasHub = hubValue !== undefined && hubValue !== null && hubValue !== '';
   // Once the field has a value (the inspector Accepted the suggestion or typed
   // their own), the "Pre-filled / Accept" banner has done its job and should
@@ -243,8 +263,20 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
     );
   }
 
+  // Missing-required styling: an amber left border keeps the live cue calm;
+  // after a submit attempt the border turns red, the concrete inputs gain
+  // aria-invalid + a red outline, and a helper text under the field states
+  // the problem in words (WCAG 1.4.1 — not color-only), wired to the input
+  // via aria-describedby. Input is never blocked.
+  const missingStrong = missing === 'strong';
+  const inputBorderCls = missingStrong ? 'border-red-500' : 'border-gray-300';
+  const missingTextId = missingStrong ? `${id}-missing` : undefined;
+
   return (
-    <div className="relative flex flex-col gap-1 p-2">
+    <div
+      className={`relative flex flex-col gap-1 p-2 ${missingBorderCls(missing)}`}
+      data-missing={missing}
+    >
       {/* Saved confirmation pulse — small, emerald, fades out. Lives inside the
           main field container so the skipped early-return never renders it. */}
       <span
@@ -300,7 +332,9 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
               id={id}
               ref={textInput.ref as (el: HTMLInputElement | null) => void}
               disabled={isTranscribing}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 pr-11 text-base disabled:bg-gray-50 disabled:opacity-60"
+              aria-invalid={missingStrong || undefined}
+              aria-describedby={missingTextId}
+              className={`w-full rounded-md border ${inputBorderCls} px-3 py-2 pr-11 text-base disabled:bg-gray-50 disabled:opacity-60`}
               defaultValue={textInput.defaultValue}
               onChange={(e) => textInput.onChange(e.target.value)}
             />
@@ -312,6 +346,8 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
               value={valueStr}
               onChange={emitText}
               className="pr-11"
+              invalid={missingStrong}
+              describedBy={missingTextId}
             />
           )}
           <VoiceDictation
@@ -329,7 +365,9 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
           id={id}
           type="number"
           inputMode="numeric"
-          className="rounded-md border border-gray-300 px-3 py-2 text-base"
+          aria-invalid={missingStrong || undefined}
+          aria-describedby={missingTextId}
+          className={`rounded-md border ${inputBorderCls} px-3 py-2 text-base`}
           value={value == null ? '' : String(value)}
           onChange={(e) => {
             onChange({
@@ -344,7 +382,9 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
         <input
           id={id}
           type="date"
-          className="rounded-md border border-gray-300 px-3 py-2 text-base"
+          aria-invalid={missingStrong || undefined}
+          aria-describedby={missingTextId}
+          className={`rounded-md border ${inputBorderCls} px-3 py-2 text-base`}
           value={value == null ? '' : String(value)}
           onChange={(e) => {
             onChange({ value: e.target.value, wasAcceptedAsIs: false });
@@ -355,7 +395,9 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
       {question.type === 'select' && (
         <select
           id={id}
-          className="rounded-md border border-gray-300 px-3 py-2 text-base"
+          aria-invalid={missingStrong || undefined}
+          aria-describedby={missingTextId}
+          className={`rounded-md border ${inputBorderCls} px-3 py-2 text-base`}
           value={value == null ? '' : String(value)}
           onChange={(e) => {
             onChange({ value: e.target.value, wasAcceptedAsIs: false });
@@ -381,7 +423,13 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
       {question.type === 'boolean' && (
         <div className="flex gap-2">
           {/* Hidden input keeps label htmlFor target resolvable for a11y/tests */}
-          <input type="hidden" id={id} aria-label={question.label} />
+          <input
+            type="hidden"
+            id={id}
+            aria-label={question.label}
+            aria-invalid={missingStrong || undefined}
+            aria-describedby={missingTextId}
+          />
           <button
             type="button"
             aria-pressed={value === true}
@@ -414,6 +462,11 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
           </button>
         </div>
       )}
+      {missingStrong && (
+        <p id={missingTextId} className="text-xs font-medium text-red-600">
+          {MISSING_REQUIRED_TEXT}
+        </p>
+      )}
     </div>
   );
 }
@@ -434,12 +487,19 @@ function AutoGrowTextarea({
   onChange,
   disabled,
   className,
+  invalid,
+  describedBy,
 }: {
   id: string;
   value: string;
   onChange: (next: string) => void;
   disabled?: boolean;
   className?: string;
+  // Strong missing-required state: red border + aria-invalid. Owned here (not
+  // via className) so the border class swaps cleanly instead of conflicting.
+  invalid?: boolean;
+  // id of the missing-required helper text, wired via aria-describedby.
+  describedBy?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement | null>(null);
   const resize = useCallback(() => {
@@ -467,7 +527,11 @@ function AutoGrowTextarea({
       id={id}
       rows={3}
       disabled={disabled}
-      className={`min-h-[5.25rem] w-full resize-none overflow-hidden rounded-md border border-gray-300 px-3 py-2 text-base disabled:bg-gray-50 disabled:opacity-60 ${className ?? ''}`}
+      aria-invalid={invalid || undefined}
+      aria-describedby={describedBy}
+      className={`min-h-[5.25rem] w-full resize-none overflow-hidden rounded-md border ${
+        invalid ? 'border-red-500' : 'border-gray-300'
+      } px-3 py-2 text-base disabled:bg-gray-50 disabled:opacity-60 ${className ?? ''}`}
       defaultValue={echo.defaultValue}
       onChange={(e) => {
         echo.onChange(e.target.value);

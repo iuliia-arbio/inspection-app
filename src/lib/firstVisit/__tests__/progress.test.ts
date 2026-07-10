@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeProgressFromAnswers } from '../progress';
+import { computeProgressFromAnswers, remainingRequiredForTarget } from '../progress';
 import { questionsForScope, isScopeLevelRequired } from '../questions';
 import type { FirstVisitPhase, FirstVisitQuestion } from '../questions';
 import type { LocalAnswer } from '../db';
@@ -292,5 +292,128 @@ describe('computeProgressFromAnswers phase filter', () => {
     );
     expect(onFilled.total).toBe(1);
     expect(onFilled.done).toBe(1);
+  });
+});
+
+describe('media-answered file questions (mediaKeys)', () => {
+  // Photo/video capture writes only the media table — no answer row exists —
+  // so progress must accept a set of media-answered question keys or required
+  // file questions can never count as done (rings stuck short of 100%).
+  const base = {
+    label: '',
+    description: null,
+    scope: 'location' as HubScope,
+    mode: 'observe' as const,
+    options: [],
+    required: true,
+    repeater: false,
+    pms_target: null,
+    status: 'existing' as const,
+    verdict: null,
+    notes: null,
+    phase_id: 'p',
+    phase_label: 'P',
+  };
+  const fileQ: FirstVisitQuestion = { ...base, slug: 'photo_q', type: 'file' };
+  const textQ: FirstVisitQuestion = { ...base, slug: 'text_q', type: 'text' };
+  const phases: FirstVisitPhase[] = [
+    { id: 'p', label: 'P', questions: [fileQ, textQ] },
+  ];
+
+  it('counts a required file question as done when its key is in mediaKeys', () => {
+    const p = computeProgressFromAnswers(
+      'location', [], undefined, phases, new Set(['photo_q']),
+    );
+    expect(p.total).toBe(2);
+    expect(p.done).toBe(1);
+  });
+
+  it('leaves a required file question missing without a media key', () => {
+    const p = computeProgressFromAnswers('location', [], undefined, phases);
+    expect(p.total).toBe(2);
+    expect(p.done).toBe(0);
+    const withUnrelated = computeProgressFromAnswers(
+      'location', [], undefined, phases, new Set(['some_other_q']),
+    );
+    expect(withUnrelated.done).toBe(0);
+  });
+
+  it('a skip-marker answer keeps a file question done with EMPTY mediaKeys', () => {
+    // Precedence guard: the answered-value check (skip markers count — the
+    // inspector dealt with the question) must run for file questions too. A
+    // refactor to "file ? media-only : value-only" would break skipped photos.
+    const answers = [
+      makeAnswer('photo_q', { __skipped: true, reason: 'No access' }),
+    ];
+    const p = computeProgressFromAnswers(
+      'location', answers, undefined, phases, new Set<string>(),
+    );
+    expect(p.total).toBe(2);
+    expect(p.done).toBe(1);
+    // And the submit dialog's remaining list agrees.
+    const remaining = remainingRequiredForTarget({
+      label: 'Prop',
+      scope: 'location' as HubScope,
+      answers,
+      phases,
+      mediaKeys: new Set<string>(),
+    });
+    expect(remaining.map((q) => q.slug)).not.toContain('photo_q');
+  });
+
+  it('does NOT let a media key satisfy a non-file required question', () => {
+    const p = computeProgressFromAnswers(
+      'location', [], undefined, phases, new Set(['text_q']),
+    );
+    expect(p.done).toBe(0);
+  });
+
+  it('excludes a hidden required file question regardless of mediaKeys', () => {
+    const gate: FirstVisitQuestion = {
+      ...base, slug: 'gate', type: 'boolean', required: false,
+    };
+    const gatedFile: FirstVisitQuestion = {
+      ...fileQ,
+      slug: 'gated_photo',
+      visible_when: { question: 'gate', equals: true },
+    };
+    const gatedPhases: FirstVisitPhase[] = [
+      { id: 'p', label: 'P', questions: [gate, gatedFile] },
+    ];
+    const hidden = computeProgressFromAnswers(
+      'location', [], undefined, gatedPhases, new Set(['gated_photo']),
+    );
+    expect(hidden.total).toBe(0);
+    expect(hidden.done).toBe(0);
+  });
+
+  it('counts the real check-in walkthrough video via a media key', () => {
+    // fv_video_checkin_walkthrough is the location-scoped required file
+    // question that kept every property ring ~1 short in the field.
+    const without = computeProgressFromAnswers('location', []);
+    const withMedia = computeProgressFromAnswers(
+      'location', [], undefined, undefined,
+      new Set(['fv_video_checkin_walkthrough']),
+    );
+    expect(withMedia.done).toBe(without.done + 1);
+    expect(withMedia.total).toBe(without.total);
+  });
+
+  it('remainingRequiredForTarget drops a media-answered file question', () => {
+    const target = {
+      label: 'Prop',
+      scope: 'location' as HubScope,
+      answers: [],
+      phases,
+    };
+    const before = remainingRequiredForTarget(target);
+    expect(before.map((q) => q.slug)).toContain('photo_q');
+    const after = remainingRequiredForTarget({
+      ...target,
+      mediaKeys: new Set(['photo_q']),
+    });
+    expect(after.map((q) => q.slug)).not.toContain('photo_q');
+    // The text question is still remaining — media never satisfies it.
+    expect(after.map((q) => q.slug)).toContain('text_q');
   });
 });

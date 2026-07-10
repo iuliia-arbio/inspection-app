@@ -2,7 +2,11 @@
 import { useMemo, useState } from 'react';
 import type { FirstVisitQuestion } from '@/lib/firstVisit/questions';
 import type { LocalAnswer } from '@/lib/firstVisit/db';
-import { PrefilledField } from '@/components/firstVisit/PrefilledField';
+import {
+  MISSING_REQUIRED_TEXT,
+  missingBorderCls,
+  PrefilledField,
+} from '@/components/firstVisit/PrefilledField';
 import { MediaButtons } from '@/components/firstVisit/MediaButtons';
 import { SkipAffordance } from '@/components/firstVisit/SkipAffordance';
 import { AttachAffordance } from '@/components/firstVisit/AttachAffordance';
@@ -246,6 +250,7 @@ export function QuestionRow({
   stepIndex,
   hubValue,
   justFilled,
+  missing,
   answers,
   onChange,
   setNotes,
@@ -257,6 +262,11 @@ export function QuestionRow({
   stepIndex: number | null;
   hubValue: unknown | undefined;
   justFilled?: boolean;
+  // Missing-required cue (Batch E1), computed by UnitSurvey for FLAT questions
+  // only. StepGroup never passes it: repeater members always carry a group_id,
+  // so they are never scope-level required (isScopeLevelRequired) and get no
+  // per-field treatment.
+  missing?: 'subtle' | 'strong';
   answers: Record<string, LocalAnswer>;
   onChange: (
     q: FirstVisitQuestion,
@@ -288,7 +298,13 @@ export function QuestionRow({
   return (
     <div className="flex flex-col gap-1">
       {isMulti ? (
-        <div className="flex flex-col gap-2 p-2">
+        // Multi-selects bypass PrefilledField, so the missing-required cue is
+        // applied on this container instead (amber left border live, red after
+        // a submit attempt).
+        <div
+          className={`flex flex-col gap-2 p-2 ${missingBorderCls(missing)}`}
+          data-missing={missing}
+        >
           <label className="text-sm font-medium">
             {question.label}
             {question.required && <span className="ml-1 text-red-500">*</span>}
@@ -347,6 +363,9 @@ export function QuestionRow({
               }
             />
           )}
+          {missing === 'strong' && (
+            <p className="text-xs font-medium text-red-600">{MISSING_REQUIRED_TEXT}</p>
+          )}
         </div>
       ) : question.type === 'file' ? (
         // Media capture inside a repeater block. PrefilledField has no 'file'
@@ -371,6 +390,7 @@ export function QuestionRow({
           value={value ?? ''}
           suggestionConfidence={snapshotConfidence(answer?.hub_suggestion_snapshot)}
           justFilled={justFilled}
+          missing={missing}
           onChange={(c) => onChange(question, c, stepIndex)}
         />
       )}

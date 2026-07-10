@@ -1,8 +1,8 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { localDb, type LocalAnswer, type LocalTarget } from '@/lib/firstVisit/db';
-import { enqueue, ensureInspectionQueued } from '@/lib/firstVisit/sync';
+import { localDb, type LocalAnswer, type LocalInspection, type LocalMedia, type LocalTarget } from '@/lib/firstVisit/db';
+import { enqueue, ensureInspectionQueued, pendingCountForInspection } from '@/lib/firstVisit/sync';
 import { useSyncEngine } from '@/lib/firstVisit/useSyncEngine';
 import { createHandlers } from '@/lib/firstVisit/handlers';
 import { type HubSnapshot } from '@/lib/firstVisit/snapshot';
@@ -108,6 +108,14 @@ export default function VisitNavigator({
 }) {
   const [targets, setTargets] = useState<LocalTarget[]>([]);
   const [answers, setAnswers] = useState<LocalAnswer[]>([]);
+  // Media rows feed progress too: photo/video questions have no answer row,
+  // so the rings/remaining list consult captured media (see progress.ts).
+  const [media, setMedia] = useState<LocalMedia[]>([]);
+  // The inspection row drives the reopen UX: a submitted visit stays fully
+  // editable (local status stays 'submitted' — no flapping), and the submit
+  // affordance becomes "Re-submit" so the inspector knows they're updating
+  // the hub, not filing something new.
+  const [inspection, setInspection] = useState<LocalInspection | null>(null);
   const [snapshot, setSnapshot] = useState<RawSnapshot | null>(
     (previewSnapshot as RawSnapshot) ?? null,
   );
@@ -120,8 +128,22 @@ export default function VisitNavigator({
   const [submitState, setSubmitState] = useState<'idle' | 'confirming' | 'submitted'>(
     'idle',
   );
+  // Batch E1: counts submit attempts (opening the submit dialog). Any attempt
+  // escalates missing required fields from the subtle live cue to a strong
+  // red + aria-invalid state; each NEW attempt lets an opened survey jump to
+  // its first missing section exactly once (UnitSurvey consumes the counter).
+  // Persists for the session — this component stays mounted while a target's
+  // survey is open, so it threads down as a plain prop.
+  const [submitAttempt, setSubmitAttempt] = useState(0);
+  // Soft submit gate (decided 2026-07-09): count of THIS inspection's outbox
+  // jobs that haven't reached the hub. Checked when the dialog opens (with a
+  // background drain that usually clears it before the inspector confirms) and
+  // again on confirm (drain → re-check → submit or show the gate). Never a hard
+  // block — "Submit anyway" always works, and Batch C's re-runnable submit
+  // heals any stragglers on the next re-submit.
+  const [pendingSync, setPendingSync] = useState(0);
   const handlers = useMemo(() => createHandlers(), []);
-  const { pending, syncNow, syncing } = useSyncEngine(handlers);
+  const { pending, stuck, lastError, syncNow, syncing } = useSyncEngine(handlers);
   const { phases: configPhases } = useSurveyConfig();
 
   // Re-ensure the hub has this inspection's parent row. If its original
@@ -149,12 +171,30 @@ export default function VisitNavigator({
     setAnswers(rows);
   }, [inspectionId]);
 
+  const reloadMedia = useCallback(async () => {
+    const rows = await localDb.media
+      .where('inspection_id')
+      .equals(inspectionId)
+      .toArray();
+    setMedia(rows);
+  }, [inspectionId]);
+
+  const reloadInspection = useCallback(async () => {
+    setInspection((await localDb.inspections.get(inspectionId)) ?? null);
+  }, [inspectionId]);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- load on mount; matches existing first-visit effects
     void reloadTargets();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- load on mount
     void reloadAnswers();
-  }, [reloadTargets, reloadAnswers]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load on mount
+    void reloadMedia();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load on mount
+    void reloadInspection();
+  }, [reloadTargets, reloadAnswers, reloadMedia, reloadInspection]);
+
+  const isResubmit = inspection?.status === 'submitted';
 
   useEffect(() => {
     if (previewSnapshot) return;
@@ -168,9 +208,32 @@ export default function VisitNavigator({
   const unitsOf = (propId: string) =>
     targets.filter((t) => t.kind === 'unit' && t.parent_id === propId);
 
+  // Media-answered question keys per target — file questions count as done
+  // when captured media exists for them (LOCAL rows only; a cloud-restored
+  // device has no media rows, so its file questions read as missing).
+  const mediaKeysByTarget = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const row of media) {
+      if (!row.question_key) continue;
+      let set = m.get(row.target_id);
+      if (!set) {
+        set = new Set();
+        m.set(row.target_id, set);
+      }
+      set.add(row.question_key);
+    }
+    return m;
+  }, [media]);
+
   const progressFor = (targetId: string, scope: HubScope, phaseIds?: string[]): ScopeProgress => {
     const own = answers.filter((a) => a.target_id === targetId);
-    return computeProgressFromAnswers(scope, own, phaseIds, configPhases);
+    return computeProgressFromAnswers(
+      scope,
+      own,
+      phaseIds,
+      configPhases,
+      mediaKeysByTarget.get(targetId),
+    );
   };
 
   // Aggregate completion across every scope in this visit: deal-scoped
@@ -202,6 +265,7 @@ export default function VisitNavigator({
         scope: 'deal',
         answers: answers.filter((a) => a.target_id === inspectionId),
         phases: configPhases,
+        mediaKeys: mediaKeysByTarget.get(inspectionId),
       },
     ];
     for (const p of properties) {
@@ -210,6 +274,7 @@ export default function VisitNavigator({
         scope: 'location',
         answers: answers.filter((a) => a.target_id === p.id),
         phases: configPhases,
+        mediaKeys: mediaKeysByTarget.get(p.id),
       });
       for (const u of unitsOf(p.id)) {
         inputs.push({
@@ -217,6 +282,7 @@ export default function VisitNavigator({
           scope: 'unit_category',
           answers: answers.filter((a) => a.target_id === u.id),
           phases: configPhases,
+          mediaKeys: mediaKeysByTarget.get(u.id),
         });
       }
     }
@@ -293,6 +359,60 @@ export default function VisitNavigator({
     setRenamingPropertyId(null);
   };
 
+  // E2: every property starts with at least one unit, so the inspector never
+  // faces an empty property they must remember to populate. A hub property
+  // adopts its FIRST hub unit (real hub identity + hub name). Otherwise we
+  // mint a real hub unit_category named "Unit 1" first — unit answers need a
+  // unit_category_id to resolve their hub scope on submit, so a purely-local
+  // default would collect answers that can never sync. If that POST fails
+  // (offline / hub error) we skip seeding silently: the property still lands
+  // and the inspector adds a unit manually, exactly like today.
+  const autoSeedUnit = async (property: LocalTarget) => {
+    // Idempotence: only seed a property with ZERO units (guards re-adds and
+    // double-fires). Read Dexie directly — the `targets` state snapshot is
+    // stale inside this async add flow.
+    const rows = await localDb.targets
+      .where('inspection_id')
+      .equals(inspectionId)
+      .toArray();
+    if (rows.some((t) => t.kind === 'unit' && t.parent_id === property.id)) return;
+
+    const hubUnit = (snapshot?.units ?? []).find(
+      (u) => u.location_id === property.location_id,
+    );
+    let seed: Pick<LocalTarget, 'unit_category_id' | 'label' | 'created_on_site'>;
+    if (hubUnit) {
+      seed = {
+        unit_category_id: hubUnit.id,
+        label: unitLabel(hubUnit),
+        created_on_site: false,
+      };
+    } else {
+      if (!property.location_id) return;
+      const res = await fetch(
+        `/api/first-visit/deals/${dealId}/locations/${property.location_id}/units`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ category_type: 'Unit 1' }),
+        },
+      ).catch(() => null);
+      if (!res?.ok) return;
+      const { unit } = await res.json();
+      seed = { unit_category_id: unit.id, label: 'Unit 1', created_on_site: true };
+    }
+    const t: LocalTarget = {
+      id: crypto.randomUUID(),
+      inspection_id: inspectionId,
+      kind: 'unit',
+      parent_id: property.id,
+      ...seed,
+      order: 0,
+    };
+    track('unit_added', { from: 'auto_seed' });
+    await persistTarget(t);
+  };
+
   const addPropertyFromHub = async (loc: HubLocation) => {
     const t: LocalTarget = {
       id: crypto.randomUUID(),
@@ -305,6 +425,7 @@ export default function VisitNavigator({
     };
     track('property_added', { from: 'hub' });
     await persistTarget(t);
+    await autoSeedUnit(t);
     setAdding(null);
   };
 
@@ -330,6 +451,7 @@ export default function VisitNavigator({
     };
     track('property_added', { from: 'on_site' });
     await persistTarget(t);
+    await autoSeedUnit(t);
     setAdding(null);
   };
 
@@ -396,16 +518,53 @@ export default function VisitNavigator({
     setSelected({ kind: 'unit', target: u, property });
   };
 
-  const confirmSubmit = async () => {
+  const refreshPendingSync = useCallback(async () => {
+    const n = await pendingCountForInspection(inspectionId);
+    setPendingSync(n);
+    return n;
+  }, [inspectionId]);
+
+  const openSubmitDialog = () => {
+    setSubmitAttempt((n) => n + 1); // Batch E contract — every attempt escalates
+    setSubmitState('confirming');
+    void refreshPendingSync();
+    // Background drain: usually clears any backlog before the inspector confirms.
+    syncNow()
+      .then(refreshPendingSync)
+      .catch((err) => console.error('[fv-sync] pre-submit drain failed', err));
+  };
+
+  const retrySync = async () => {
+    await syncNow().catch((err) => console.error('[fv-sync] retry failed', err));
+    await refreshPendingSync();
+  };
+
+  const doSubmit = async () => {
     const missing = remainingByTarget().reduce((n, g) => n + g.questions.length, 0);
-    track('submit_clicked', { inspection_id: inspectionId, missing_required: missing });
+    track('submit_clicked', {
+      inspection_id: inspectionId,
+      missing_required: missing,
+      pending_sync: pendingSync,
+      resubmit: isResubmit,
+    });
     await localDb.inspections.update(inspectionId, {
       status: 'submitted',
       submitted_at: new Date().toISOString(),
     });
     await enqueue('submit', { inspection_id: inspectionId });
-    syncNow().catch(() => {});
+    await reloadInspection();
+    syncNow().catch((err) => console.error('[fv-sync] post-submit drain failed', err));
     setSubmitState('submitted');
+  };
+
+  const confirmSubmit = async () => {
+    await syncNow().catch((err) => console.error('[fv-sync] pre-submit drain failed', err));
+    const still = await refreshPendingSync();
+    if (still > 0) {
+      track('submit_gate_shown', { inspection_id: inspectionId, pending_sync: still });
+      return; // dialog re-renders with the gate: Retry + Submit anyway
+    }
+    await doSubmit();
   };
 
   // --- Survey view ---------------------------------------------------------
@@ -445,9 +604,12 @@ export default function VisitNavigator({
         onBack={() => {
           setSelected(null);
           void reloadAnswers();
+          // Media captured inside the survey must tick the ring on return.
+          void reloadMedia();
         }}
         breadcrumb={breadcrumb}
         phaseIds={phaseIds}
+        submitAttempt={submitAttempt}
       />
     );
   }
@@ -534,7 +696,7 @@ export default function VisitNavigator({
             })()}
           </div>
           <div className="flex shrink-0 items-center gap-2 text-xs">
-            <SyncBadge pending={pending} />
+            <SyncBadge pending={pending} stuck={stuck} lastError={lastError} onRetry={syncNow} />
             <button
               onClick={syncNow}
               disabled={syncing}
@@ -639,16 +801,20 @@ export default function VisitNavigator({
           a deal-level evaluation card. */}
 
       <button
-        onClick={() => setSubmitState('confirming')}
+        onClick={openSubmitDialog}
         className="mt-6 w-full rounded-md bg-black px-4 py-3 text-white"
       >
-        Submit visit
+        {isResubmit ? 'Re-submit visit' : 'Submit visit'}
       </button>
 
       {submitState !== 'idle' ? (
         <SubmitDialog
           state={submitState}
+          resubmit={isResubmit}
           remaining={remainingByTarget()}
+          pendingSync={pendingSync}
+          onRetrySync={retrySync}
+          onSubmitAnyway={doSubmit}
           onConfirm={confirmSubmit}
           onCancel={() => setSubmitState('idle')}
         />
@@ -661,18 +827,31 @@ export default function VisitNavigator({
 // visible-required questions grouped by target so the inspector knows exactly
 // what's still open (or confirms everything's done). After submit it shows a
 // clear success state so there's no ambiguity about whether it went through.
+// Submitted visits are reopenable (Batch C): the copy promises editability
+// and `resubmit` relabels the action for already-submitted visits.
 function SubmitDialog({
   state,
+  resubmit,
   remaining,
+  pendingSync,
+  onRetrySync,
+  onSubmitAnyway,
   onConfirm,
   onCancel,
 }: {
   state: 'confirming' | 'submitted';
+  resubmit: boolean;
   remaining: RemainingGroup[];
+  // Soft sync gate: this inspection's undelivered outbox jobs. > 0 swaps the
+  // primary confirm for an explicit "Submit anyway" and shows a Retry.
+  pendingSync: number;
+  onRetrySync: () => void;
+  onSubmitAnyway: () => void;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
   const missing = remaining.reduce((n, g) => n + g.questions.length, 0);
+  const submitLabel = resubmit ? 'Re-submit visit' : 'Submit visit';
   return (
     <div
       role="dialog"
@@ -685,8 +864,8 @@ function SubmitDialog({
             <div className="text-2xl">✓</div>
             <h2 className="mt-2 text-lg font-semibold">Visit submitted</h2>
             <p className="mt-1 text-sm text-gray-600">
-              Your answers are saved and syncing to the hub. You can close this
-              page.
+              Your answers are saved and syncing to the hub. You can reopen
+              this visit later to make changes.
             </p>
             <button
               onClick={onCancel}
@@ -726,8 +905,23 @@ function SubmitDialog({
               </>
             )}
             <p className="mt-3 text-xs text-gray-500">
-              You will not be able to edit this visit after submitting.
+              You can reopen and edit this visit at any time — re-submitting
+              updates the hub with your latest answers.
             </p>
+            {pendingSync > 0 && (
+              <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+                <span>
+                  {pendingSync} change{pendingSync === 1 ? " hasn't" : "s haven't"} reached
+                  the hub yet.
+                </span>
+                <button
+                  onClick={onRetrySync}
+                  className="shrink-0 rounded border border-amber-400 px-2 py-1 text-xs font-medium"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
             <div className="mt-4 flex gap-2">
               <button
                 onClick={onCancel}
@@ -736,10 +930,10 @@ function SubmitDialog({
                 Keep editing
               </button>
               <button
-                onClick={onConfirm}
+                onClick={pendingSync > 0 ? onSubmitAnyway : onConfirm}
                 className="flex-1 rounded-md bg-black px-4 py-2.5 text-sm font-medium text-white"
               >
-                Submit visit
+                {pendingSync > 0 ? 'Submit anyway' : submitLabel}
               </button>
             </div>
           </>

@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 
 // The badge no longer shows an in-flight "Syncing…" message (that caused header
-// layout jitter). It surfaces ONLY one state: offline with unsynced work — a
-// quiet, non-alarming reassurance. Everything else renders nothing.
+// layout jitter). It surfaces two states: offline with unsynced work (a quiet,
+// non-alarming reassurance) and online with STUCK jobs (work silently failing
+// to reach the hub — count + last error + tap-to-retry). Everything else
+// renders nothing.
 let ONLINE = true;
 vi.mock('@/lib/firstVisit/useSyncEngine', () => ({ useOnlineStatus: () => ONLINE }));
 import { SyncBadge } from '../SyncBadge';
@@ -39,5 +41,26 @@ describe('SyncBadge', () => {
     ONLINE = false;
     render(<SyncBadge pending={1158} />);
     expect(screen.queryByText(/1158|pending/i)).not.toBeInTheDocument();
+  });
+
+  it('shows a failing state when online with stuck jobs: count + retry + last error', () => {
+    const onRetry = vi.fn();
+    render(<SyncBadge pending={5} stuck={3} lastError="answers -> 500 boom" onRetry={onRetry} />);
+    const badge = screen.getByRole('button', { name: /3 not syncing/i });
+    expect(badge).toHaveAttribute('title', expect.stringContaining('boom'));
+    fireEvent.click(badge);
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it('healthy pending work while online still renders nothing', () => {
+    const { container } = render(<SyncBadge pending={5} stuck={0} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('offline takes precedence over stuck (retries are pointless offline)', () => {
+    ONLINE = false;
+    render(<SyncBadge pending={3} stuck={2} lastError="boom" />);
+    expect(screen.getByText(/Offline — changes saved/i)).toBeInTheDocument();
+    expect(screen.queryByText(/not syncing/i)).toBeNull();
   });
 });

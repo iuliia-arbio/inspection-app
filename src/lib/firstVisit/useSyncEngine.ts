@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { drainOutbox, outboxCount, type JobHandlers } from './sync';
+import { drainOutbox, outboxStats, type JobHandlers, type OutboxStats } from './sync';
 import { useOnlineStatus } from './useOnlineStatus';
 
 // Re-export so existing call sites (e.g. SyncBadge) keep working without
@@ -9,33 +9,37 @@ export { useOnlineStatus };
 
 export function useSyncEngine(handlers: JobHandlers): {
   pending: number;
+  stuck: number;
+  lastError?: string;
   syncNow: () => Promise<void>;
   syncing: boolean;
 } {
-  const [pending, setPending] = useState(0);
+  const [stats, setStats] = useState<OutboxStats>({ pending: 0, stuck: 0 });
   const [syncing, setSyncing] = useState(false);
   const online = useOnlineStatus();
 
-  // Keep the handlers and the in-flight flag in refs so the public
-  // `syncNow` identity is stable across renders. Without this, every
-  // setSyncing(true) rebuilds syncNow → effects that depend on syncNow
-  // refire → call syncNow again → infinite "syncing…" flicker.
+  // Keep the handlers in a ref so the public `syncNow` identity is stable
+  // across renders. Without this, every setSyncing(true) rebuilds syncNow →
+  // effects that depend on syncNow refire → call syncNow again → infinite
+  // "syncing…" flicker.
   const handlersRef = useRef(handlers);
   handlersRef.current = handlers;
-  const inFlight = useRef(false);
 
   const refresh = useCallback(async () => {
-    setPending(await outboxCount());
+    setStats(await outboxStats());
   }, []);
 
   const syncNow = useCallback(async () => {
-    if (inFlight.current) return;
-    inFlight.current = true;
+    // No duplicate-suppression here: drainOutbox is single-flight and returns
+    // the shared in-flight promise, so concurrent callers JOIN the running
+    // drain instead of starting a second one. The old early-return let
+    // confirmSubmit's `await syncNow()` resolve mid-drain, count in-transit
+    // jobs, and flash a false-positive submit gate that self-healed a second
+    // later.
     setSyncing(true);
     try {
       await drainOutbox(handlersRef.current);
     } finally {
-      inFlight.current = false;
       setSyncing(false);
       await refresh();
     }
@@ -48,18 +52,22 @@ export function useSyncEngine(handlers: JobHandlers): {
     return () => clearInterval(id);
   }, [refresh]);
 
-  // Trigger a sync when we come online.
+  // Trigger a sync when we come online. Drain-level errors are logged (not
+  // swallowed) — per-JOB errors are already persisted on the outbox row and
+  // surface through the `stuck` count.
   useEffect(() => {
-    if (online) syncNow().catch(() => {});
+    if (online) syncNow().catch((err) => console.error('[fv-sync] drain failed', err));
   }, [online, syncNow]);
 
   // Periodic background drain + on-focus drain.
   useEffect(() => {
     const id = setInterval(() => {
-      if (navigator.onLine) syncNow().catch(() => {});
+      if (navigator.onLine)
+        syncNow().catch((err) => console.error('[fv-sync] drain failed', err));
     }, 30_000);
     const onFocus = () => {
-      if (navigator.onLine) syncNow().catch(() => {});
+      if (navigator.onLine)
+        syncNow().catch((err) => console.error('[fv-sync] drain failed', err));
     };
     window.addEventListener('focus', onFocus);
     return () => {
@@ -68,5 +76,11 @@ export function useSyncEngine(handlers: JobHandlers): {
     };
   }, [syncNow]);
 
-  return { pending, syncNow, syncing };
+  return {
+    pending: stats.pending,
+    stuck: stats.stuck,
+    lastError: stats.lastError,
+    syncNow,
+    syncing,
+  };
 }

@@ -182,6 +182,59 @@ describe('POST /api/first-visit/submit', () => {
     expect(body.skipped.no_scope).toBe(1);
   });
 
+  it('re-runs cleanly on an already-submitted inspection: re-pushes values and refreshes submitted_at', async () => {
+    // Reopenable visits (Batch C) depend on the submit route being re-runnable:
+    // the route selects the inspection WITHOUT reading status (it cannot gate
+    // on it), the data_point_values writes are conflict-keyed upserts, and the
+    // closing update re-marks submitted with a fresh timestamp every run.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-07-09T10:00:00Z'));
+      const inspectionUpdate = vi
+        .fn()
+        .mockReturnValue({ eq: () => Promise.resolve({ error: null }) });
+      const { upsert } = makeClient({
+        answers: [
+          { question_key: 'beds', value: 2, data_point_slug: 'beds-count', scope: 'unit_category', unit_category_id: 'u1', step_index: -1 },
+        ],
+        dataPoints: [{ id: 'dp1', slug: 'beds-count' }],
+        inspectionUpdate,
+      });
+
+      const first = await POST(submitReq());
+      expect(first.status).toBe(200);
+
+      // Second run — same inspection, now already submitted server-side.
+      vi.setSystemTime(new Date('2026-07-09T11:00:00Z'));
+      const second = await POST(submitReq());
+      expect(second.status).toBe(200);
+      const body = await second.json();
+      expect(body.ok).toBe(true);
+      expect(body.pushed).toBe(1);
+
+      // Values were pushed again via the idempotent conflict-keyed upsert.
+      expect(upsert).toHaveBeenCalledTimes(2);
+      expect(upsert).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ data_point_id: 'dp1', scope_id: 'u1', value: 2 }),
+        { onConflict: 'data_point_id,scope_id,source' },
+      );
+
+      // Both runs re-marked the inspection submitted, with a NEW submitted_at.
+      expect(inspectionUpdate).toHaveBeenCalledTimes(2);
+      const firstUpdate = inspectionUpdate.mock.calls[0][0] as { status: string; submitted_at: string };
+      const secondUpdate = inspectionUpdate.mock.calls[1][0] as { status: string; submitted_at: string };
+      expect(firstUpdate.status).toBe('submitted');
+      expect(secondUpdate.status).toBe('submitted');
+      expect(secondUpdate.submitted_at).toBe('2026-07-09T11:00:00.000Z');
+      expect(new Date(secondUpdate.submitted_at).getTime()).toBeGreaterThan(
+        new Date(firstUpdate.submitted_at).getTime(),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('does NOT mark the inspection submitted when a value upsert fails, and returns 502', async () => {
     const { inspectionUpdate } = makeClient({
       answers: [

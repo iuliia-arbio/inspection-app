@@ -16,6 +16,20 @@ import { localDb } from './src/lib/firstVisit/db';
 // empty database regardless of what ran before it. We open the DB first (a
 // no-op if already open) so the table-clear is safe even on the very first test.
 beforeEach(async () => {
+  // A debounce timer scheduled by enqueue() in one test must never fire
+  // mid-later-test and drain the (freshly reseeded) outbox behind its back.
+  // Imported DYNAMICALLY (not at the top of this setup file): a static import
+  // here would load sync.ts → handlers.ts into the module cache before any
+  // test file's vi.mock('../handlers') registers, silently unmocking it.
+  // Files that vi.mock sync itself get their mock here (which may lack this
+  // export — vitest throws on missing mock exports); their mocked enqueue
+  // never schedules a real timer, so skipping the cancel is safe.
+  try {
+    const sync = await import('./src/lib/firstVisit/sync');
+    sync.cancelScheduledDrain();
+  } catch {
+    /* sync is mocked in this file — no real debounce timer exists */
+  }
   if (!localDb.isOpen()) {
     await localDb.open();
   }
