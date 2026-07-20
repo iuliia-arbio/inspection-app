@@ -1001,37 +1001,38 @@ function PropertyRow({
         </div>
       ) : (
         <SwipeToDeleteRow onDelete={onDelete}>
-          <div className="flex w-full items-center gap-1 p-3">
-            {property.created_on_site ? (
-              <button
-                type="button"
-                onClick={onStartRename}
-                title="Tap to rename"
-                className="flex-1 text-left"
-              >
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={onOpen}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') onOpen();
+            }}
+            className="flex w-full items-center gap-1 p-3"
+          >
+            <div className="flex-1 text-left">
+              {property.created_on_site ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStartRename();
+                  }}
+                  className="text-left text-sm font-medium underline decoration-dotted underline-offset-2"
+                >
+                  {property.label}
+                </button>
+              ) : (
                 <div className="text-sm font-medium">{property.label}</div>
-                <div className="text-xs text-gray-500">Tap to rename</div>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onOpen}
-                className="flex-1 text-left"
-              >
-                <div className="text-sm font-medium">{property.label}</div>
-                <div className="text-xs text-gray-500">Tap to open property questions</div>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onOpen}
-              className="flex items-center gap-2 p-1"
-            >
+              )}
+              <div className="text-xs text-gray-500">Tap to open property questions</div>
+            </div>
+            <div className="flex items-center gap-2 p-1">
               {progress.total > 0 ? (
                 <ProgressRing done={progress.done} total={progress.total} size={32} />
               ) : null}
               <span aria-hidden className="text-gray-400">›</span>
-            </button>
+            </div>
           </div>
         </SwipeToDeleteRow>
       )}
@@ -1100,35 +1101,37 @@ function UnitRow({
 
   return (
     <SwipeToDeleteRow onDelete={onDelete}>
-      <div className="flex items-center gap-1 rounded border border-gray-100 hover:bg-gray-50">
-        {unit.created_on_site ? (
-          <button
-            type="button"
-            onClick={onStartRename}
-            title="Tap to rename"
-            className="flex-1 truncate px-2 py-1.5 text-left text-sm"
-          >
-            {unit.label}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onOpen}
-            className="flex-1 truncate px-2 py-1.5 text-left text-sm"
-          >
-            {unit.label}
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onOpen}
-          className="flex items-center gap-2 px-2 py-1.5"
-        >
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') onOpen();
+        }}
+        className="flex items-center gap-1 rounded border border-gray-100 hover:bg-gray-50"
+      >
+        <div className="flex-1 truncate px-2 py-1.5 text-left text-sm">
+          {unit.created_on_site ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onStartRename();
+              }}
+              className="truncate underline decoration-dotted underline-offset-2"
+            >
+              {unit.label}
+            </button>
+          ) : (
+            unit.label
+          )}
+        </div>
+        <div className="flex items-center gap-2 px-2 py-1.5">
           {progress.total > 0 ? (
             <ProgressRing done={progress.done} total={progress.total} size={24} stroke={2} />
           ) : null}
           <span aria-hidden className="text-gray-400">›</span>
-        </button>
+        </div>
       </div>
     </SwipeToDeleteRow>
   );
