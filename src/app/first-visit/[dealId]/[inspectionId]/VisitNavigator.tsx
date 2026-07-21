@@ -9,7 +9,6 @@ import { type HubSnapshot } from '@/lib/firstVisit/snapshot';
 import { SyncBadge } from '@/components/firstVisit/SyncBadge';
 import { ExportMenu } from '@/components/firstVisit/ExportMenu';
 import { ProgressRing } from '@/components/firstVisit/ProgressRing';
-import { SwipeToDeleteRow } from '@/components/firstVisit/SwipeToDeleteRow';
 import { track } from '@/lib/firstVisit/analytics';
 import { UnitSurvey, type SurveyTarget } from './UnitSurvey';
 import type { HubScope } from '@/lib/firstVisit/resolveScope';
@@ -123,6 +122,12 @@ export default function VisitNavigator({
   const [adding, setAdding] = useState<null | { kind: 'property' } | { kind: 'unit'; property: LocalTarget }>(null);
   const [renamingUnitId, setRenamingUnitId] = useState<string | null>(null);
   const [renamingPropertyId, setRenamingPropertyId] = useState<string | null>(null);
+  // Delete flow: the × on a property/unit card opens this confirmation dialog
+  // rather than deleting inline. `childCount` drives the property copy ("and
+  // its N units") so the inspector knows the blast radius before confirming.
+  const [pendingDelete, setPendingDelete] = useState<
+    null | { kind: 'property' | 'unit'; target: LocalTarget; childCount: number }
+  >(null);
   // Submit flow state: a confirmation dialog that lists what's still open, and
   // a terminal success state so the inspector knows the visit actually went in.
   const [submitState, setSubmitState] = useState<'idle' | 'confirming' | 'submitted'>(
@@ -290,7 +295,6 @@ export default function VisitNavigator({
   };
 
   const deleteProperty = async (p: LocalTarget) => {
-    if (!confirm(`Delete ${p.label || 'this property'} and all its units?`)) return;
     const children = unitsOf(p.id);
     const childIds = children.map((c) => c.id);
     const allIds = [p.id, ...childIds];
@@ -314,7 +318,6 @@ export default function VisitNavigator({
   };
 
   const deleteUnit = async (u: LocalTarget) => {
-    if (!confirm(`Delete ${u.label || 'this unit'}?`)) return;
     const rows = await localDb.answers.where('target_id').equals(u.id).toArray();
     if (rows.length > 0) {
       await localDb.answers.bulkDelete(rows.map((r) => r.id));
@@ -744,7 +747,9 @@ export default function VisitNavigator({
                 onStartRename={() => setRenamingPropertyId(p.id)}
                 onCancelRename={() => setRenamingPropertyId(null)}
                 onSaveRename={(label) => renameProperty(p, label)}
-                onDelete={() => deleteProperty(p)}
+                onDelete={() =>
+                  setPendingDelete({ kind: 'property', target: p, childCount: unitsOf(p.id).length })
+                }
               >
                 <div className="border-t border-gray-100 px-3 py-2">
                   <div className="flex flex-col gap-1.5">
@@ -760,7 +765,9 @@ export default function VisitNavigator({
                           onStartRename={() => setRenamingUnitId(u.id)}
                           onCancelRename={() => setRenamingUnitId(null)}
                           onSaveRename={(label) => renameUnit(u, label)}
-                          onDelete={() => deleteUnit(u)}
+                          onDelete={() =>
+                            setPendingDelete({ kind: 'unit', target: u, childCount: 0 })
+                          }
                         />
                       );
                     })}
@@ -819,7 +826,82 @@ export default function VisitNavigator({
           onCancel={() => setSubmitState('idle')}
         />
       ) : null}
+
+      {pendingDelete ? (
+        <DeleteConfirmDialog
+          kind={pendingDelete.kind}
+          label={pendingDelete.target.label}
+          childCount={pendingDelete.childCount}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={async () => {
+            const { kind, target } = pendingDelete;
+            setPendingDelete(null);
+            if (kind === 'property') await deleteProperty(target);
+            else await deleteUnit(target);
+          }}
+        />
+      ) : null}
     </main>
+  );
+}
+
+// Confirmation before deleting a property or unit. Mirrors SubmitDialog's
+// modal shell. Property copy names the number of child units that go with it
+// so the inspector can't wipe a filled-out property by mistake.
+function DeleteConfirmDialog({
+  kind,
+  label,
+  childCount,
+  onConfirm,
+  onCancel,
+}: {
+  kind: 'property' | 'unit';
+  label: string;
+  childCount: number;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const name = label || (kind === 'property' ? 'this property' : 'this unit');
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+    >
+      <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+        <h2 className="text-lg font-semibold">
+          Delete {kind === 'property' ? 'property' : 'unit'}?
+        </h2>
+        <p className="mt-2 text-sm text-gray-700">
+          {kind === 'property' && childCount > 0 ? (
+            <>
+              <span className="font-medium">{name}</span> and its {childCount} unit
+              {childCount === 1 ? '' : 's'} — along with all their answers — will be
+              removed. This can&apos;t be undone.
+            </>
+          ) : (
+            <>
+              <span className="font-medium">{name}</span> and all its answers will be
+              removed. This can&apos;t be undone.
+            </>
+          )}
+        </p>
+        <div className="mt-4 flex gap-2">
+          <button
+            onClick={onCancel}
+            className="flex-1 rounded-md border border-gray-300 px-4 py-2.5 text-sm font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 rounded-md bg-red-600 px-4 py-2.5 text-sm font-medium text-white"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1000,41 +1082,50 @@ function PropertyRow({
           </button>
         </div>
       ) : (
-        <SwipeToDeleteRow onDelete={onDelete}>
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={onOpen}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') onOpen();
-            }}
-            className="flex w-full items-center gap-1 p-3"
-          >
-            <div className="flex-1 text-left">
-              {property.created_on_site ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onStartRename();
-                  }}
-                  className="text-left text-sm font-medium underline decoration-dotted underline-offset-2"
-                >
-                  {property.label}
-                </button>
-              ) : (
-                <div className="text-sm font-medium">{property.label}</div>
-              )}
-              <div className="text-xs text-gray-500">Tap to open property questions</div>
-            </div>
-            <div className="flex items-center gap-2 p-1">
-              {progress.total > 0 ? (
-                <ProgressRing done={progress.done} total={progress.total} size={32} />
-              ) : null}
-              <span aria-hidden className="text-gray-400">›</span>
-            </div>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={onOpen}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') onOpen();
+          }}
+          className="flex w-full items-center gap-1 p-3"
+        >
+          <div className="flex-1 text-left">
+            {property.created_on_site ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStartRename();
+                }}
+                className="text-left text-sm font-medium underline decoration-dotted underline-offset-2"
+              >
+                {property.label}
+              </button>
+            ) : (
+              <div className="text-sm font-medium">{property.label}</div>
+            )}
+            <div className="text-xs text-gray-500">Tap to open property questions</div>
           </div>
-        </SwipeToDeleteRow>
+          <div className="flex items-center gap-2 p-1">
+            {progress.total > 0 ? (
+              <ProgressRing done={progress.done} total={progress.total} size={32} />
+            ) : null}
+            <span aria-hidden className="text-gray-400">›</span>
+            <button
+              type="button"
+              aria-label={`Delete ${property.label || 'property'}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-lg leading-none text-gray-400 hover:bg-red-50 hover:text-red-600"
+            >
+              ×
+            </button>
+          </div>
+        </div>
       )}
       {children}
     </div>
@@ -1100,40 +1191,49 @@ function UnitRow({
   }
 
   return (
-    <SwipeToDeleteRow onDelete={onDelete}>
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onOpen}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') onOpen();
-        }}
-        className="flex items-center gap-1 rounded border border-gray-100 hover:bg-gray-50"
-      >
-        <div className="flex-1 truncate px-2 py-1.5 text-left text-sm">
-          {unit.created_on_site ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onStartRename();
-              }}
-              className="truncate underline decoration-dotted underline-offset-2"
-            >
-              {unit.label}
-            </button>
-          ) : (
-            unit.label
-          )}
-        </div>
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          {progress.total > 0 ? (
-            <ProgressRing done={progress.done} total={progress.total} size={24} stroke={2} />
-          ) : null}
-          <span aria-hidden className="text-gray-400">›</span>
-        </div>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onOpen();
+      }}
+      className="flex items-center gap-1 rounded border border-gray-100 hover:bg-gray-50"
+    >
+      <div className="flex-1 truncate px-2 py-1.5 text-left text-sm">
+        {unit.created_on_site ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onStartRename();
+            }}
+            className="truncate underline decoration-dotted underline-offset-2"
+          >
+            {unit.label}
+          </button>
+        ) : (
+          unit.label
+        )}
       </div>
-    </SwipeToDeleteRow>
+      <div className="flex items-center gap-2 px-2 py-1.5">
+        {progress.total > 0 ? (
+          <ProgressRing done={progress.done} total={progress.total} size={24} stroke={2} />
+        ) : null}
+        <span aria-hidden className="text-gray-400">›</span>
+        <button
+          type="button"
+          aria-label={`Delete ${unit.label || 'unit'}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="flex h-6 w-6 items-center justify-center rounded-full text-base leading-none text-gray-400 hover:bg-red-50 hover:text-red-600"
+        >
+          ×
+        </button>
+      </div>
+    </div>
   );
 }
 
