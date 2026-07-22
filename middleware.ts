@@ -62,13 +62,46 @@ export async function middleware(req: NextRequest) {
     },
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // Whether the request already carries a Supabase auth session cookie
+  // (`sb-<ref>-auth-token`, possibly chunked as `.0`/`.1`). This is how we tell
+  // "signed in but couldn't verify right now" apart from "genuinely signed out".
+  const hasAuthCookie = req.cookies
+    .getAll()
+    .some((c) => c.name.includes('auth-token'));
 
-  if (!user || !isAllowedEmail(user.email)) {
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
+  let user: { email?: string } | null = null;
+  let verifyFailed = false;
+  try {
+    const result = await supabase.auth.getUser();
+    user = result.data.user;
+    // getUser resolves with an error (rather than throwing) on refresh-token
+    // rotation races and other transient auth-server failures. Treat that as a
+    // failure to VERIFY, not proof of sign-out.
+    if (!user && result.error) verifyFailed = true;
+  } catch {
+    // Network drop to the auth server (on-site connectivity). Also a verify
+    // failure, never a hard sign-out.
+    verifyFailed = true;
   }
-  return res;
+
+  // A verified staff user — the normal path.
+  if (user && isAllowedEmail(user.email)) return res;
+
+  // Could not verify, but the browser still holds a session cookie. Do NOT eject
+  // mid-inspection over a transient hiccup (rotation race / flaky signal): let
+  // the request through so the client-side keepalive can refresh the token. The
+  // gate still rejects genuinely cookieless requests below. Logged so a real
+  // recurrence is diagnosable from the runtime logs rather than invisible.
+  if (!user && verifyFailed && hasAuthCookie) {
+    console.warn('[auth] getUser could not verify but session cookie present — allowing through', {
+      path: url.pathname,
+    });
+    return res;
+  }
+
+  // Genuinely signed out (no session), or authenticated as a non-staff email.
+  url.pathname = '/login';
+  return NextResponse.redirect(url);
 }
 
 export const config = {
