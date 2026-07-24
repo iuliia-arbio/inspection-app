@@ -1,4 +1,10 @@
 'use client';
+import {
+  ArrowLeftIcon,
+  ChevronRightIcon,
+  ChevronLeftIcon,
+  CheckIcon,
+} from '@/components/icons';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   filterPhasesForScope,
@@ -79,7 +85,7 @@ export function UnitSurvey({
   const { phases: configPhases } = useSurveyConfig();
   const [answers, setAnswers] = useState<Record<string, LocalAnswer>>({});
   // Keys of fields just populated by a voice fill — drives the transient
-  // "✦ from voice" highlight; cleared after a short delay.
+  // sparkle icon highlight ("from voice"); cleared after a short delay.
   const [justFilledKeys, setJustFilledKeys] = useState<Set<string>>(new Set());
   // WS-F media anchoring: pull photo/video file-questions out of their own
   // phase ("Property documentation", "Unit photos & videos") and inline them
@@ -447,7 +453,7 @@ export function UnitSurvey({
     // Deliberately NO auto-scroll: the inspector keeps talking through the
     // section and reviews/accepts the suggestions further down whenever they
     // choose. The fill is signalled in place by the prompt's "Pre-filled: …"
-    // hint plus the transient "✦ from voice" highlight on each field.
+    // hint plus the transient sparkle-icon highlight on each field.
     setTimeout(() => setJustFilledKeys(new Set()), 2500);
   };
 
@@ -593,9 +599,9 @@ export function UnitSurvey({
         <button
           onClick={onBack}
           tabIndex={-1}
-          className="mb-3 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900"
+          className="mb-3 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 min-h-[44px]"
         >
-          ← Back to visit
+          <ArrowLeftIcon className="h-4 w-4" /> Back to visit
         </button>
         <h1 className="text-lg font-semibold">{target.label}</h1>
         <p className="mt-6 text-sm text-gray-500">
@@ -679,9 +685,9 @@ export function UnitSurvey({
       <button
         onClick={onBack}
         tabIndex={-1}
-        className="mb-1 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900"
+        className="mb-1 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 min-h-[44px]"
       >
-        ← Back to visit
+        <ArrowLeftIcon className="h-4 w-4" /> Back to visit
       </button>
       {breadcrumb && breadcrumb.length > 1 && (
         // Show only the parent context — the last item duplicates the H1.
@@ -689,7 +695,7 @@ export function UnitSurvey({
         <div className="mb-3 text-xs text-gray-400">
           {breadcrumb.slice(0, -1).map((crumb, i) => (
             <span key={i}>
-              {i > 0 && <span className="mx-1 text-gray-300">›</span>}
+              {i > 0 && <span className="mx-1 text-gray-300"><ChevronRightIcon className="inline h-3 w-3 text-gray-300" /></span>}
               <span>{crumb}</span>
             </span>
           ))}
@@ -1005,7 +1011,7 @@ export function UnitSurvey({
 
       <div className="mt-6 flex justify-end">
         {nextIncompletePhaseIdx === null ? (
-          <span className="text-xs text-emerald-600">✓ All required answered</span>
+          <span className="inline-flex items-center gap-1 text-xs text-emerald-600"><CheckIcon className="inline h-3.5 w-3.5" /> All required answered</span>
         ) : (
           <button
             type="button"
@@ -1026,7 +1032,7 @@ export function UnitSurvey({
           disabled={isFirst}
           className="rounded-md border border-gray-300 px-4 py-2 text-sm disabled:opacity-40"
         >
-          ← Prev
+          <span className="inline-flex items-center gap-1"><ChevronLeftIcon className="h-4 w-4" /> Prev</span>
         </button>
         <div className="text-xs text-gray-400 tabular-nums">
           {currentIdx + 1} / {phases.length}

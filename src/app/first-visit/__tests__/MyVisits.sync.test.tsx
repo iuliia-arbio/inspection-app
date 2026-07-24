@@ -48,6 +48,8 @@ describe('MyVisits sync engine', () => {
       last_attempt_at: Date.now(),
     });
     render(<MyVisits />);
-    expect(await screen.findByText(/1 not syncing/i)).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: /1 change not syncing/i }),
+    ).toBeInTheDocument();
   });
 });

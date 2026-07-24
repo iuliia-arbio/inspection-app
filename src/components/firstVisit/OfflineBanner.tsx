@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { WifiOffIcon, CheckIcon } from '@/components/icons';
 import { useOnlineStatus } from '@/lib/firstVisit/useOnlineStatus';
 
 /**
@@ -49,12 +50,12 @@ export function OfflineBanner() {
       >
         {offline ? (
           <span>
-            <span aria-hidden="true">📡</span>{' '}
+            <WifiOffIcon className="inline h-4 w-4 shrink-0" />{' '}
             You&apos;re offline — answers are saving locally and will sync when you reconnect.
           </span>
         ) : (
           <span>
-            <span aria-hidden="true">✓</span> Back online — syncing…
+            <CheckIcon className="inline h-4 w-4 shrink-0" /> Back online — syncing…
           </span>
         )}
       </div>

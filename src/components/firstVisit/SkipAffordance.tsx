@@ -48,7 +48,7 @@ export function SkipAffordance({
         type="button"
         tabIndex={-1}
         onClick={() => setOpen(true)}
-        className="self-start text-[11px] text-gray-400 underline-offset-2 hover:text-gray-700 hover:underline"
+        className="inline-flex items-center self-start min-h-[44px] text-xs font-medium text-gray-500 underline-offset-2 hover:text-gray-700 hover:underline"
       >
         Can't answer? Mark as N/A
       </button>

@@ -11,6 +11,7 @@ export default function DealPicker({ deals }: { deals: { id: string; name: strin
   const [formType, setFormType] = useState<'care' | 'greenfield'>('care');
   const [submitting, setSubmitting] = useState(false);
   const [picking, setPicking] = useState<string | null>(null); // deal id being resolved
+  const [dealSearch, setDealSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const pickDeal = async (dealId: string, created: boolean) => {
@@ -53,28 +54,49 @@ export default function DealPicker({ deals }: { deals: { id: string; name: strin
     }
   };
 
+  const filteredDeals = dealSearch.trim()
+    ? deals.filter((d) => d.name.toLowerCase().includes(dealSearch.toLowerCase()))
+    : deals;
+
   return (
     <div className="mt-4 flex flex-col gap-4">
       {error && !creating && <p className="text-xs text-red-600">{error}</p>}
       {deals.length === 0 ? (
         <p className="text-sm text-gray-500">No existing deals (or offline).</p>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {deals.map((d) => (
-            <li key={d.id}>
-              <button
-                onClick={() => void pickDeal(d.id, false).catch(() => {})} // error already rendered via setError
-                disabled={picking !== null}
-                className="block w-full rounded border border-gray-200 p-3 text-left hover:bg-gray-50 disabled:opacity-50"
-              >
-                <div className="text-sm font-medium">{d.name}</div>
-                <div className="text-xs text-gray-500">
-                  {picking === d.id ? 'Opening visit…' : d.id}
-                </div>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <>
+          {deals.length > 5 && (
+            <input
+              type="text"
+              value={dealSearch}
+              onChange={(e) => setDealSearch(e.target.value)}
+              placeholder="Search deals…"
+              className="mb-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+            />
+          )}
+          <ul className="flex flex-col gap-2">
+            {filteredDeals.length === 0 && dealSearch.trim() ? (
+              <li className="px-1 py-2 text-sm text-gray-400">
+                No deals matching &ldquo;{dealSearch.trim()}&rdquo;
+              </li>
+            ) : (
+              filteredDeals.map((d) => (
+                <li key={d.id}>
+                  <button
+                    onClick={() => void pickDeal(d.id, false).catch(() => {})}
+                    disabled={picking !== null}
+                    className="block w-full rounded border border-gray-200 p-3 text-left hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <div className="text-sm font-medium">{d.name}</div>
+                    <div className="text-xs text-gray-500">
+                      {picking === d.id ? 'Opening visit…' : d.id}
+                    </div>
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </>
       )}
 
       <div className="border-t border-gray-200 pt-4">
@@ -109,6 +131,11 @@ export default function DealPicker({ deals }: { deals: { id: string; name: strin
                 <option value="care">Care</option>
                 <option value="greenfield">Greenfield</option>
               </select>
+              <span className="text-gray-400">
+                {formType === 'care'
+                  ? 'Existing property \u2014 inspect current condition and inventory.'
+                  : 'New property \u2014 document setup requirements and initial state.'}
+              </span>
             </label>
             {error && <p className="text-xs text-red-600">{error}</p>}
             <div className="flex gap-2">

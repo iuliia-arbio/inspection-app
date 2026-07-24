@@ -44,6 +44,7 @@ function formatWhen(iso: string): string {
 
 export default function MyVisits() {
   const [rows, setRows] = useState<Row[] | null>(null);
+  const [search, setSearch] = useState('');
   const [offline, setOffline] = useState(false);
   // Full engine, not a one-shot drain: jobs enqueued elsewhere (DealPicker's
   // inspection_upsert, deletes made in the navigator) used to sit until a
@@ -51,7 +52,7 @@ export default function MyVisits() {
   // triggers retry them from the list too. drainOutbox is single-flight, so
   // this second engine can't double-drain against an open navigator.
   const handlers = useMemo(() => createHandlers(), []);
-  const { pending, stuck, lastError, syncNow } = useSyncEngine(handlers);
+  const { pending, stuck, lastError, syncNow, syncing } = useSyncEngine(handlers);
 
   const load = useCallback(async () => {
     // Hydrate from the hub first so this device has every staff visit, then
@@ -98,21 +99,46 @@ export default function MyVisits() {
   if (rows === null) {
     return <p className="mt-2 text-sm text-gray-500">Loading…</p>;
   }
+
+  const filtered = search.trim()
+    ? rows.filter((r) => {
+        const q = search.toLowerCase();
+        return (
+          (r.deal_name ?? '').toLowerCase().includes(q) ||
+          (r.inspection.inspector_email ?? '').toLowerCase().includes(q) ||
+          r.inspection.status.toLowerCase().includes(q)
+        );
+      })
+    : rows;
+
   return (
     <div className="mt-2">
       <div className="mb-2 flex justify-end">
-        <SyncBadge pending={pending} stuck={stuck} lastError={lastError} onRetry={syncNow} />
+        <SyncBadge pending={pending} stuck={stuck} lastError={lastError} syncing={syncing} onRetry={syncNow} />
       </div>
       {offline && (
         <p className="mb-2 text-xs text-amber-600">
-          Couldn’t reach the hub — showing visits stored on this device.
+          Couldn't reach the hub — showing visits stored on this device.
         </p>
       )}
-      {rows.length === 0 ? (
-        <p className="text-sm text-gray-500">No visits yet.</p>
+      {rows.length > 3 && (
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search visits…"
+          className="mb-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+        />
+      )}
+      {filtered.length === 0 ? (
+        search.trim() ? (
+          <p className="text-sm text-gray-500">No visits matching &ldquo;{search.trim()}&rdquo;</p>
+        ) : (
+          <p className="text-sm text-gray-500">No visits yet.</p>
+        )
       ) : (
         <ul className="flex flex-col gap-2">
-          {rows.map((r) => (
+          {filtered.map((r) => (
             <li
               key={r.inspection.id}
               className="rounded border border-gray-200 p-3 hover:bg-gray-50"
@@ -122,7 +148,7 @@ export default function MyVisits() {
                 className="block"
               >
                 <div className="text-sm font-medium">
-                  {r.deal_name ?? `Deal ${r.deal_id.slice(0, 8)}…`}
+                  {r.deal_name || 'Unnamed deal'}
                 </div>
                 <div className="text-xs text-gray-500">
                   {r.inspection.status}

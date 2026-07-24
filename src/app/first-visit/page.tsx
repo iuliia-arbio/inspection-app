@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowLeftIcon } from '@/components/icons';
 import MyVisits from './MyVisits';
 import { EditSurveyButton } from '@/components/firstVisit/EditSurveyButton';
 
@@ -9,9 +10,9 @@ export default function FirstVisitLanding() {
     <main className="mx-auto max-w-md p-6">
       <Link
         href="/"
-        className="mb-3 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900"
+        className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 min-h-[44px]"
       >
-        ← Back to mode picker
+        <ArrowLeftIcon className="h-4 w-4" /> Back to mode picker
       </Link>
       <div className="flex items-start justify-between gap-3">
         <h1 className="text-xl font-semibold">First Visit Survey</h1>

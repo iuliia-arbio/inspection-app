@@ -6,6 +6,7 @@ import { VoiceDictationButton, type DictationStatus } from '@/components/firstVi
 import { useVoiceDictation } from '@/lib/firstVisit/useVoiceDictation';
 import { appendDictation } from '@/lib/firstVisit/appendDictation';
 import { ScaleField } from '@/components/firstVisit/ScaleField';
+import { CheckIcon, SparklesIcon } from '@/components/icons';
 
 export type PrefilledFieldProps = {
   question: FirstVisitQuestion;
@@ -138,7 +139,7 @@ function useEchoInput(
   return { ref, defaultValue: initialValue, onChange };
 }
 
-// How long the "✓ Saved" pill stays visible before fading out.
+// How long the "Saved" pill stays visible before fading out.
 const SAVED_VISIBLE_MS = 1200;
 // Debounce delay for text/textarea inputs so the pulse only fires after the
 // inspector pauses typing — typing every keystroke would be noisy.
@@ -286,7 +287,7 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
           showSaved ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        ✓ Saved
+        <CheckIcon className="inline h-3.5 w-3.5" /> Saved
       </span>
       <label htmlFor={id} className="text-sm font-medium">
         {question.label}
@@ -303,7 +304,7 @@ export function PrefilledField({ question, hubValue, value, onChange, suggestion
           }`}
         >
           <span className="rounded bg-indigo-200 px-1.5 py-0.5 text-xs font-medium text-indigo-900">
-            {justFilled ? '✦ from voice' : 'Pre-filled'}
+            {justFilled ? <><SparklesIcon className="inline h-3 w-3" /> from voice</> : 'Pre-filled'}
           </span>
           <span className="truncate text-indigo-900">{String(hubValue)}</span>
           {lowConfidence && (

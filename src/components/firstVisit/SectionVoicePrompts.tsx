@@ -1,21 +1,22 @@
 'use client';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { VoiceDictationButton } from '@/components/firstVisit/VoiceDictationButton';
 import { QuestionRow } from '@/components/firstVisit/StepGroup';
 import type { SectionVoiceFill, VoiceFillSummary } from '@/lib/firstVisit/useSectionVoiceFill';
 import { voiceSummarySlug, type SectionPrompt } from '@/data/section-voice-prompts';
 import { VOICE_FILL_ENABLED } from '@/lib/firstVisit/featureFlags';
+import { MicIcon, SparklesIcon, CheckIcon, FileTextIcon } from '@/components/icons';
 
 // Build the non-intrusive hint shown at the prompt after a clip is processed.
 // Just a COUNT of what was filled — listing field names was noisy and leaked the
 // synthetic summary slug into the list. The inspector reviews/Accepts the actual
 // fields below; the survey deliberately does NOT scroll them away from the prompt.
-function summaryLine(s: VoiceFillSummary): string {
+function summaryLine(s: VoiceFillSummary): ReactNode {
   const parts: string[] = [];
   if (s.singlesWritten) parts.push(`${s.singlesWritten} field${s.singlesWritten > 1 ? 's' : ''}`);
   if (s.itemsWritten) parts.push(`${s.itemsWritten} item${s.itemsWritten > 1 ? 's' : ''}`);
   if (parts.length === 0) return 'Nothing to add from that clip — try again or fill below.';
-  return `✦ Pre-filled ${parts.join(' + ')} — review & accept below.`;
+  return <><SparklesIcon className="inline h-3 w-3" /> Pre-filled {parts.join(' + ')} — review &amp; accept below.</>;
 }
 
 // A single "talk about this" voice prompt, rendered INLINE directly above the
@@ -46,7 +47,7 @@ export function VoicePromptCard({
   return (
     <div className="flex flex-col gap-1 rounded-lg border border-indigo-100 bg-indigo-50/40 p-3">
       <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-indigo-700">
-        <span aria-hidden="true">🎙️</span> Fill by voice
+        <MicIcon className="h-4 w-4" aria-hidden="true" /> Fill by voice
       </div>
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm text-gray-700">{prompt.label}</p>
@@ -85,7 +86,7 @@ export function VoicePromptCard({
               Accept all
             </button>
           )}
-          {fill.accepted && <span className="text-xs text-emerald-700">✓ Accepted</span>}
+          {fill.accepted && <span className="inline-flex items-center gap-1 text-xs text-emerald-700"><CheckIcon className="inline h-3.5 w-3.5" /> Accepted</span>}
         </div>
       )}
       {fill.errorPromptId === prompt.id && (
@@ -108,7 +109,7 @@ export function VoiceSummaryChip(props: React.ComponentProps<typeof QuestionRow>
         onClick={() => setExpanded(true)}
         className="self-start rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-200"
       >
-        📝 Summary — tap to view
+        <><FileTextIcon className="h-4 w-4" /> Summary — tap to view</>
       </button>
     );
   }

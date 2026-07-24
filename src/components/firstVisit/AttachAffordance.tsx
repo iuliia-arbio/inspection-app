@@ -1,5 +1,6 @@
 'use client';
 import { useRef, useState } from 'react';
+import { PlusIcon, FileTextIcon, CameraIcon, VideoIcon, UploadIcon } from '@/components/icons';
 import { useMediaCapture } from '@/lib/firstVisit/useMediaCapture';
 import { MediaGallery } from './MediaGallery';
 
@@ -73,9 +74,9 @@ export function AttachAffordance({
           type="button"
           tabIndex={-1}
           onClick={() => setOpen(true)}
-          className="self-start text-[11px] text-gray-400 underline-offset-2 hover:text-gray-700 hover:underline"
+          className="inline-flex items-center gap-1 self-start rounded-lg px-2 py-2 text-xs font-medium text-gray-500 underline-offset-2 hover:bg-gray-100 hover:text-gray-700 min-h-[44px]"
         >
-          + Attach note, photo, or video
+          <PlusIcon className="h-3.5 w-3.5" /> Attach note, photo, or video
         </button>
       ) : (
         <div className="flex flex-col gap-2 rounded-md border border-gray-200 bg-gray-50 p-2">
@@ -109,9 +110,9 @@ export function AttachAffordance({
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowNote((v) => !v)}
-                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-xs hover:bg-gray-100"
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs hover:bg-gray-100"
                 >
-                  📝 {showNote || hasNote ? 'Hide note' : 'Note'}
+                  <FileTextIcon className="h-4 w-4" /> {showNote || hasNote ? 'Hide note' : 'Note'}
                 </button>
                 {!hideMedia && (
                   <>
@@ -119,35 +120,35 @@ export function AttachAffordance({
                       type="button"
                       tabIndex={-1}
                       onClick={() => photoRef.current?.click()}
-                      className="rounded-md border border-gray-300 bg-white px-3 py-2 text-xs hover:bg-gray-100"
+                      className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs hover:bg-gray-100"
                     >
-                      📷 Photo
+                      <CameraIcon className="h-4 w-4" /> Photo
                     </button>
                     <button
                       type="button"
                       tabIndex={-1}
                       onClick={() => videoRef.current?.click()}
-                      className="rounded-md border border-gray-300 bg-white px-3 py-2 text-xs hover:bg-gray-100"
+                      className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs hover:bg-gray-100"
                     >
-                      🎥 Video
+                      <VideoIcon className="h-4 w-4" /> Video
                     </button>
                     <button
                       type="button"
                       tabIndex={-1}
                       onClick={() => photoUploadRef.current?.click()}
                       title="Upload photo from device"
-                      className="rounded p-2 text-xs text-gray-400 hover:text-gray-700"
+                      className="inline-flex items-center gap-1 rounded px-2 py-1.5 text-xs text-gray-400 hover:text-gray-700"
                     >
-                      ⤓ photo
+                      <UploadIcon className="h-3.5 w-3.5" /> Upload
                     </button>
                     <button
                       type="button"
                       tabIndex={-1}
                       onClick={() => videoUploadRef.current?.click()}
                       title="Upload video from device"
-                      className="rounded p-2 text-xs text-gray-400 hover:text-gray-700"
+                      className="inline-flex items-center gap-1 rounded px-2 py-1.5 text-xs text-gray-400 hover:text-gray-700"
                     >
-                      ⤓ video
+                      <UploadIcon className="h-3.5 w-3.5" /> Upload
                     </button>
                   </>
                 )}

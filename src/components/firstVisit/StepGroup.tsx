@@ -16,6 +16,7 @@ import { PerOptionFollowUp } from '@/components/firstVisit/PerOptionFollowUp';
 import { followUpKey, perOptionFollowUpKey } from '@/lib/firstVisit/multiSelect';
 import { isSkipped, type SkippedValue } from '@/components/firstVisit/ProgressRing';
 import { maxStepIndexForGroup, snapshotConfidence } from '@/lib/firstVisit/aiFill';
+import { XIcon, SparklesIcon } from '@/components/icons';
 
 // Soft-delete sentinel value used when the inspector removes a block. We
 // don't have a hard-delete API and a missing step_index would cause sibling
@@ -62,7 +63,7 @@ export type StepGroupProps = {
 };
 
 // Block-repeater container. Renders the group's questions inside one or more
-// "Step / Block N" cards, with an "+ Add step" button below and a "×" remove
+// "Step / Block N" cards, with an "+ Add step" button below and a remove
 // button (confirm-modal) per block. Tracks step_indices observed in the
 // answers map; new blocks have step_index = max(existing) + 1.
 export function StepGroup({
@@ -228,9 +229,9 @@ function BlockCard({
             tabIndex={-1}
             onClick={onRemove}
             aria-label={`Remove ${title}`}
-            className="rounded-full px-2 py-0.5 text-lg leading-none text-gray-400 hover:bg-gray-100 hover:text-red-500"
+            className="flex items-center justify-center rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-500"
           >
-            ×
+            <XIcon className="h-3.5 w-3.5" />
           </button>
         )}
       </header>
@@ -319,7 +320,7 @@ export function QuestionRow({
               }`}
             >
               <span className="rounded bg-indigo-200 px-1.5 py-0.5 text-xs font-medium text-indigo-900">
-                {justFilled ? '✦ from voice' : 'Pre-filled'}
+                {justFilled ? <><SparklesIcon className="inline h-3 w-3" /> from voice</> : 'Pre-filled'}
               </span>
               <span className="truncate text-indigo-900">{multiSuggestion.join(', ')}</span>
               <button

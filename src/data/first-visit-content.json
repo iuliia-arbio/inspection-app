@@ -2168,7 +2168,7 @@
           "label": "Health score (1-10)",
           "description": "Composite of condition, completeness, and open-issue count/severity. 10 = move-in ready, 1 = major work needed.",
           "scope": "unit_category",
-          "type": "select",
+          "type": "scale",
           "options": [
             "1",
             "2",
