@@ -1,5 +1,6 @@
 'use client';
-import { useRef } from 'react';
+import { type ReactNode, useRef } from 'react';
+import { CameraIcon, VideoIcon, UploadIcon } from '@/components/icons';
 import { useMediaCapture } from '@/lib/firstVisit/useMediaCapture';
 import { MediaGallery } from './MediaGallery';
 
@@ -77,7 +78,7 @@ function MediaRow({
   const uploadRef = useRef<HTMLInputElement>(null);
 
   const accept = kind === 'photo' ? 'image/*' : 'video/*';
-  const captureLabel = kind === 'photo' ? '📷 Take photo' : '🎥 Record video';
+  const captureLabel: ReactNode = kind === 'photo' ? <><CameraIcon className="h-4 w-4" /> Take photo</> : <><VideoIcon className="h-4 w-4" /> Record video</>;
 
   return (
     <div className="flex items-center gap-2">
@@ -85,7 +86,7 @@ function MediaRow({
         type="button"
         tabIndex={-1}
         onClick={() => captureRef.current?.click()}
-        className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700"
+        className="inline-flex items-center gap-1.5 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700"
       >
         {captureLabel}
       </button>
@@ -96,9 +97,9 @@ function MediaRow({
         onClick={() => uploadRef.current?.click()}
         title={`Upload ${kind} from device`}
         aria-label={`Upload ${kind} from device`}
-        className="ml-auto rounded p-1 text-gray-400 hover:text-gray-700"
+        className="ml-auto inline-flex items-center gap-1 rounded px-2 py-1.5 text-xs text-gray-400 hover:text-gray-700"
       >
-        ⤓
+        <UploadIcon className="h-4 w-4" /> Upload
       </button>
 
       <input

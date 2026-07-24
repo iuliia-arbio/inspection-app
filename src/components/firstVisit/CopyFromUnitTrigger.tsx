@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { CopyIcon } from '@/components/icons';
 import { localDb, type LocalTarget } from '@/lib/firstVisit/db';
 
 // Lets the inspector copy answers from a previously-filled unit onto the
@@ -121,9 +122,9 @@ export function CopyFromUnitTrigger({
         onClick={() => setStep('pick-unit')}
         title="Copy from another unit"
         aria-label="Copy from another unit"
-        className="shrink-0 rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50"
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
       >
-        📋
+        <CopyIcon className="h-4 w-4" /> Copy from unit
       </button>
     );
   }

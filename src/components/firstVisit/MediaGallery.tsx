@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useMediaCapture } from '@/lib/firstVisit/useMediaCapture';
 import { localDb, type LocalMedia } from '@/lib/firstVisit/db';
 import { getRemoteMedia, type RemoteMedia } from '@/lib/firstVisit/remoteMedia';
+import { HeadphonesIcon, FilmIcon, CheckIcon, XIcon } from '@/components/icons';
 
 // View / delete uploads for one (inspection, target, area, question?) tuple.
 // This is the SINGLE SOURCE OF TRUTH for the per-question file count: it loads
@@ -165,9 +166,11 @@ export function MediaGallery({
                   // in the modal — avoids eager buffering) and the brief frame
                   // before a local row's object URL exists. Film/clip placeholder.
                   <div className="flex h-full w-full items-center justify-center text-gray-400">
-                    <span aria-hidden className="text-xl">
-                      {row.kind === 'audio' ? '🎧' : '🎬'}
-                    </span>
+                    {row.kind === 'audio' ? (
+                      <HeadphonesIcon className="h-6 w-6 text-gray-400" />
+                    ) : (
+                      <FilmIcon className="h-6 w-6 text-gray-400" />
+                    )}
                   </div>
                 ) : row.kind === 'video' ? (
                   <video
@@ -193,26 +196,30 @@ export function MediaGallery({
                   title="Uploaded"
                   className="absolute -left-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-[11px] leading-none text-white shadow"
                 >
-                  ✓
+                  <CheckIcon className="h-3 w-3" />
                 </span>
               ) : (
                 <span
                   aria-label="uploading"
                   title="Uploading…"
-                  className="absolute -left-1.5 -top-1.5 flex h-5 w-5 animate-pulse items-center justify-center rounded-full bg-gray-400 text-[9px] leading-none text-white shadow"
+                  className="absolute -left-1.5 -top-1.5 flex h-5 w-5 animate-pulse items-center justify-center rounded-full bg-gray-400 shadow"
                 >
-                  ⏳
+                  <span className="block h-1.5 w-1.5 rounded-full bg-white" />
                 </span>
               )}
               {row.deletable && (
                 <button
                   type="button"
                   tabIndex={-1}
-                  onClick={() => onDelete(row.id)}
+                  onClick={() => {
+                    if (window.confirm(`Delete this ${row.kind}? This can't be undone.`)) {
+                      onDelete(row.id);
+                    }
+                  }}
                   aria-label={`Delete ${row.kind}`}
-                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[11px] leading-none text-white shadow hover:bg-red-700"
+                  className="absolute -right-1.5 -top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-white shadow hover:bg-red-700"
                 >
-                  ✕
+                  <XIcon className="h-3.5 w-3.5" />
                 </button>
               )}
             </li>
@@ -254,7 +261,7 @@ export function MediaGallery({
               aria-label="Close preview"
               className="absolute -right-3 -top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-900 shadow"
             >
-              ✕
+              <XIcon className="h-4 w-4" />
             </button>
           </div>
         </div>

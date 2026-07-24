@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { XIcon } from '@/components/icons';
 import {
   questionEditorSchema,
   FIELD_TYPES,
@@ -174,7 +175,7 @@ export function QuestionEditorRow({
                   onClick={() => removeOption(i)}
                   className="text-gray-500 hover:text-red-600"
                 >
-                  ✕
+                  <XIcon className="h-3 w-3" />
                 </button>
               </li>
             ))}

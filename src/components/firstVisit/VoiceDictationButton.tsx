@@ -1,4 +1,5 @@
 'use client';
+import { MicIcon, AlertTriangleIcon } from '@/components/icons';
 
 export type DictationStatus = 'idle' | 'recording' | 'transcribing' | 'error';
 
@@ -84,7 +85,7 @@ export function VoiceDictationButton({
           onClick={onStart}
           className="inline-flex items-center gap-1 rounded-md border border-red-300 px-2 py-1 text-xs hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          <span aria-hidden="true">⚠️🎙️</span>
+          <span aria-hidden="true" className="inline-flex items-center gap-0.5"><AlertTriangleIcon className="h-4 w-4" /><MicIcon className="h-4 w-4" /></span>
           <span>Transcription failed — tap to retry</span>
         </button>
       </span>
@@ -101,7 +102,7 @@ export function VoiceDictationButton({
         onClick={onStart}
         className="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        <span aria-hidden="true">🎙️</span>
+        <MicIcon className="h-4 w-4" aria-hidden="true" />
       </button>
       {!online && (
         <span className="text-[10px] text-gray-400">Voice needs a connection — type for now</span>

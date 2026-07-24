@@ -80,7 +80,7 @@ describe('StepGroup', () => {
     expect(screen.getByText('Step 2')).toBeInTheDocument();
   });
 
-  it('"×" remove button appears once there are 2+ blocks and triggers confirm', async () => {
+  it('remove button appears once there are 2+ blocks and triggers confirm', async () => {
     const user = userEvent.setup();
     const { onChange } = setup({
       // Seed: two blocks with values for slug q1 at step 0 and step 1.

@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { localDb, type LocalAnswer, type LocalInspection, type LocalMedia, type LocalTarget } from '@/lib/firstVisit/db';
 import { enqueue, ensureInspectionQueued, pendingCountForInspection } from '@/lib/firstVisit/sync';
@@ -21,6 +21,7 @@ import {
 } from '@/lib/firstVisit/progress';
 import { validateUnitIdentifier } from '@/lib/firstVisit/unitIdentifier';
 import { useSurveyConfig } from '@/lib/firstVisit/SurveyConfigContext';
+import { ArrowLeftIcon, ChevronRightIcon, CheckIcon, CheckCircleIcon, XIcon, MoreIcon, PenIcon, TrashIcon } from '@/components/icons';
 
 // Deal-scoped questions render as a single "Visit details" card up top (the V1
 // redesign keeps only Visit metadata at deal level; readiness moved to per-unit
@@ -122,7 +123,7 @@ export default function VisitNavigator({
   const [adding, setAdding] = useState<null | { kind: 'property' } | { kind: 'unit'; property: LocalTarget }>(null);
   const [renamingUnitId, setRenamingUnitId] = useState<string | null>(null);
   const [renamingPropertyId, setRenamingPropertyId] = useState<string | null>(null);
-  // Delete flow: the × on a property/unit card opens this confirmation dialog
+  // Delete flow: the delete button on a property/unit card opens this confirmation dialog
   // rather than deleting inline. `childCount` drives the property copy ("and
   // its N units") so the inspector knows the blast radius before confirming.
   const [pendingDelete, setPendingDelete] = useState<
@@ -147,6 +148,13 @@ export default function VisitNavigator({
   // block — "Submit anyway" always works, and Batch C's re-runnable submit
   // heals any stragglers on the next re-submit.
   const [pendingSync, setPendingSync] = useState(0);
+  // Inline error banner — replaces alert() for non-blocking error feedback.
+  const [inlineError, setInlineError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!inlineError) return;
+    const t = setTimeout(() => setInlineError(null), 5000);
+    return () => clearTimeout(t);
+  }, [inlineError]);
   const handlers = useMemo(() => createHandlers(), []);
   const { pending, stuck, lastError, syncNow, syncing } = useSyncEngine(handlers);
   const { phases: configPhases } = useSurveyConfig();
@@ -283,7 +291,7 @@ export default function VisitNavigator({
       });
       for (const u of unitsOf(p.id)) {
         inputs.push({
-          label: `${p.label || 'Property'} › ${u.label || 'Unit'}`,
+          label: `${p.label || 'Property'} / ${u.label || 'Unit'}`,
           scope: 'unit_category',
           answers: answers.filter((a) => a.target_id === u.id),
           phases: configPhases,
@@ -439,7 +447,7 @@ export default function VisitNavigator({
       body: JSON.stringify({ display_name: label }),
     });
     if (!res.ok) {
-      alert('Could not create property on the hub.');
+      setInlineError('Could not create property on the hub.');
       return;
     }
     const { location } = await res.json();
@@ -477,7 +485,7 @@ export default function VisitNavigator({
 
   const addUnitOnSite = async (property: LocalTarget, label: string) => {
     if (!property.location_id) {
-      alert('This property has no hub location yet.');
+      setInlineError('This property has no hub location yet.');
       return;
     }
     const res = await fetch(
@@ -489,7 +497,7 @@ export default function VisitNavigator({
       },
     );
     if (!res.ok) {
-      alert('Could not create unit on the hub.');
+      setInlineError('Could not create unit on the hub.');
       return;
     }
     const { unit } = await res.json();
@@ -514,7 +522,7 @@ export default function VisitNavigator({
   // human-readable owner, so block and route the inspector to rename instead.
   const openUnit = (u: LocalTarget, property: LocalTarget) => {
     if (!u.label || !u.label.trim()) {
-      alert('This unit needs a name before you can open it. Rename it first.');
+      setInlineError('This unit needs a name before you can open it.');
       setRenamingUnitId(u.id);
       return;
     }
@@ -636,10 +644,9 @@ export default function VisitNavigator({
         <div className="mb-2 flex items-center justify-between text-xs text-gray-500">
           <Link
             href="/first-visit/new"
-            tabIndex={-1}
-            className="inline-flex items-center gap-1 hover:text-gray-900"
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 min-h-[44px]"
           >
-            <span aria-hidden>←</span> Pick another deal
+            <ArrowLeftIcon className="h-4 w-4" /> Pick another deal
           </Link>
           <Link
             href="/first-visit"
@@ -688,18 +695,18 @@ export default function VisitNavigator({
               const allDone = op.done >= op.total;
               return (
                 <p
-                  className={`mt-1 text-xs font-medium ${
+                  className={`mt-1 flex items-center text-xs font-medium ${
                     allDone ? 'text-green-700' : 'text-gray-700'
                   }`}
                 >
                   {op.done} of {op.total} required complete
-                  {allDone ? ' ✓' : ''}
+                  {allDone && <CheckIcon className="inline h-3.5 w-3.5 text-green-600 ml-1" />}
                 </p>
               );
             })()}
           </div>
           <div className="flex shrink-0 items-center gap-2 text-xs">
-            <SyncBadge pending={pending} stuck={stuck} lastError={lastError} onRetry={syncNow} />
+            <SyncBadge pending={pending} stuck={stuck} lastError={lastError} syncing={syncing} onRetry={syncNow} />
             <button
               onClick={syncNow}
               disabled={syncing}
@@ -712,6 +719,13 @@ export default function VisitNavigator({
           </div>
         </div>
       </header>
+
+      {/* Inline error banner — replaces alert() */}
+      {inlineError && (
+        <div role="alert" className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {inlineError}
+        </div>
+      )}
 
       {/* Visit details (deal-scoped) */}
       <button
@@ -728,13 +742,18 @@ export default function VisitNavigator({
           const pr = progressFor(inspectionId, 'deal', DEAL_DETAILS_PHASES);
           return pr.total > 0 ? <ProgressRing done={pr.done} total={pr.total} size={32} /> : null;
         })()}
-        <span aria-hidden className="text-gray-400">›</span>
+        <ChevronRightIcon className="h-4 w-4 text-gray-400" />
       </button>
 
       {/* Properties */}
       <section className="mt-5">
         <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">Properties</h2>
         <div className="mt-2 flex flex-col gap-3">
+          {properties.length === 0 && (
+            <p className="rounded-lg border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-400">
+              No properties added yet. Add a property from the hub or create one on-site to get started.
+            </p>
+          )}
           {properties.map((p) => {
             const propProgress = progressFor(p.id, 'location');
             return (
@@ -943,7 +962,7 @@ function SubmitDialog({
       <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
         {state === 'submitted' ? (
           <div className="text-center">
-            <div className="text-2xl">✓</div>
+            <CheckCircleIcon className="h-8 w-8 text-green-600 mx-auto" />
             <h2 className="mt-2 text-lg font-semibold">Visit submitted</h2>
             <p className="mt-1 text-sm text-gray-600">
               Your answers are saved and syncing to the hub. You can reopen
@@ -961,7 +980,7 @@ function SubmitDialog({
             <h2 className="text-lg font-semibold">Submit this visit?</h2>
             {missing === 0 ? (
               <p className="mt-2 text-sm text-green-700">
-                Everything required is filled in. ✓
+                Everything required is filled in. <CheckIcon className="inline h-3.5 w-3.5 text-green-600 ml-0.5" />
               </p>
             ) : (
               <>
@@ -1021,6 +1040,87 @@ function SubmitDialog({
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+// Overflow menu for property/unit rows — replaces inline delete buttons
+// and dotted-underline rename with a clean ••• menu.
+function OverflowMenu({
+  label,
+  canRename,
+  onRename,
+  onDelete,
+}: {
+  label: string;
+  canRename: boolean;
+  onRename: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    document.addEventListener('keydown', keyHandler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+      document.removeEventListener('keydown', keyHandler);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-label={`Actions for ${label}`}
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+      >
+        <MoreIcon className="h-4 w-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 z-20 mt-1 w-36 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+          {canRename && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+                onRename();
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              <PenIcon className="h-3.5 w-3.5" /> Rename
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+              onDelete();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+          >
+            <TrashIcon className="h-3.5 w-3.5" /> Delete
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1092,38 +1192,20 @@ function PropertyRow({
           className="flex w-full items-center gap-1 p-3"
         >
           <div className="flex-1 text-left">
-            {property.created_on_site ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onStartRename();
-                }}
-                className="text-left text-sm font-medium underline decoration-dotted underline-offset-2"
-              >
-                {property.label}
-              </button>
-            ) : (
-              <div className="text-sm font-medium">{property.label}</div>
-            )}
+            <div className="text-sm font-medium">{property.label}</div>
             <div className="text-xs text-gray-500">Tap to open property questions</div>
           </div>
-          <div className="flex items-center gap-2 p-1">
+          <div className="flex items-center gap-1">
             {progress.total > 0 ? (
               <ProgressRing done={progress.done} total={progress.total} size={32} />
             ) : null}
-            <span aria-hidden className="text-gray-400">›</span>
-            <button
-              type="button"
-              aria-label={`Delete ${property.label || 'property'}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-lg leading-none text-gray-400 hover:bg-red-50 hover:text-red-600"
-            >
-              ×
-            </button>
+            <ChevronRightIcon className="h-4 w-4 text-gray-400" />
+            <OverflowMenu
+              label={property.label || 'property'}
+              canRename={!!property.created_on_site}
+              onRename={onStartRename}
+              onDelete={onDelete}
+            />
           </div>
         </div>
       )}
@@ -1153,8 +1235,6 @@ function UnitRow({
 }) {
   const [draft, setDraft] = useState(unit.label ?? '');
 
-  // Reset draft whenever we enter rename mode, so a cancel-then-rename starts
-  // from the current label rather than stale state.
   useEffect(() => {
     if (isRenaming) setDraft(unit.label ?? '');
   }, [isRenaming, unit.label]);
@@ -1201,41 +1281,24 @@ function UnitRow({
       className="flex items-center gap-1 rounded border border-gray-100 hover:bg-gray-50"
     >
       <div className="flex-1 truncate px-2 py-1.5 text-left text-sm">
-        {unit.created_on_site ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onStartRename();
-            }}
-            className="truncate underline decoration-dotted underline-offset-2"
-          >
-            {unit.label}
-          </button>
-        ) : (
-          unit.label
-        )}
+        {unit.label}
       </div>
-      <div className="flex items-center gap-2 px-2 py-1.5">
+      <div className="flex items-center gap-1 px-2 py-1.5">
         {progress.total > 0 ? (
           <ProgressRing done={progress.done} total={progress.total} size={24} stroke={2} />
         ) : null}
-        <span aria-hidden className="text-gray-400">›</span>
-        <button
-          type="button"
-          aria-label={`Delete ${unit.label || 'unit'}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          className="flex h-6 w-6 items-center justify-center rounded-full text-base leading-none text-gray-400 hover:bg-red-50 hover:text-red-600"
-        >
-          ×
-        </button>
+        <ChevronRightIcon className="h-4 w-4 text-gray-400" />
+        <OverflowMenu
+          label={unit.label || 'unit'}
+          canRename={true}
+          onRename={onStartRename}
+          onDelete={onDelete}
+        />
       </div>
     </div>
   );
 }
+
 
 function AddPropertyControl({
   open,

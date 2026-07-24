@@ -128,8 +128,8 @@ describe('AttachAffordance', () => {
       // "+ Attach" trigger) — assert the media affordances are absent while
       // the note capability remains usable.
       expect(await screen.findByPlaceholderText(/note/i)).toBeInTheDocument();
-      expect(screen.queryByText('📷 Photo')).not.toBeInTheDocument();
-      expect(screen.queryByText('🎥 Video')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /photo/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /video/i })).not.toBeInTheDocument();
       expect(screen.queryByText(/\d+ files?/i)).not.toBeInTheDocument();
     });
 

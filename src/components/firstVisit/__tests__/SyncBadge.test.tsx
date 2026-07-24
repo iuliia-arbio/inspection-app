@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-// The badge no longer shows an in-flight "Syncing…" message (that caused header
-// layout jitter). It surfaces two states: offline with unsynced work (a quiet,
-// non-alarming reassurance) and online with STUCK jobs (work silently failing
-// to reach the hub — count + last error + tap-to-retry). Everything else
-// renders nothing.
+// The badge is now an always-present sync glyph with a fixed footprint (so the
+// header buttons no longer jump). Three states: online-healthy (resting or
+// spinning icon), offline (muted icon, reassurance in the label), and online
+// with STUCK jobs (red icon + "!" that opens an inline panel with the real
+// server error + Retry — the failure reason is finally visible on touch).
 let ONLINE = true;
 vi.mock('@/lib/firstVisit/useSyncEngine', () => ({ useOnlineStatus: () => ONLINE }));
 import { SyncBadge } from '../SyncBadge';
@@ -15,52 +15,42 @@ beforeEach(() => {
 });
 
 describe('SyncBadge', () => {
-  it('renders nothing while online, even with pending work (no syncing badge)', () => {
-    const { container } = render(<SyncBadge pending={5} />);
-    expect(container).toBeEmptyDOMElement();
+  it('shows a resting synced icon while online and healthy', () => {
+    render(<SyncBadge pending={0} stuck={0} syncing={false} />);
+    expect(screen.getByLabelText(/all changes synced/i)).toBeInTheDocument();
   });
 
-  it('renders nothing while online with no pending work', () => {
-    const { container } = render(<SyncBadge pending={0} />);
-    expect(container).toBeEmptyDOMElement();
+  it('reports a syncing state while a drain is in flight', () => {
+    render(<SyncBadge pending={5} stuck={0} syncing />);
+    expect(screen.getByLabelText(/^syncing$/i)).toBeInTheDocument();
   });
 
-  it('shows a quiet offline note when offline with unsynced work', () => {
+  it('shows a quiet offline indicator when offline', () => {
     ONLINE = false;
     render(<SyncBadge pending={3} />);
-    expect(screen.getByText(/Offline — changes saved/i)).toBeInTheDocument();
-  });
-
-  it('renders nothing when offline with no pending work', () => {
-    ONLINE = false;
-    const { container } = render(<SyncBadge pending={0} />);
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByLabelText(/offline — changes saved/i)).toBeInTheDocument();
   });
 
   it('never shows an alarming backlog number', () => {
-    ONLINE = false;
-    render(<SyncBadge pending={1158} />);
+    render(<SyncBadge pending={1158} stuck={0} />);
     expect(screen.queryByText(/1158|pending/i)).not.toBeInTheDocument();
   });
 
-  it('shows a failing state when online with stuck jobs: count + retry + last error', () => {
+  it('online + stuck: red icon opens an inline panel with the error + Retry', () => {
     const onRetry = vi.fn();
     render(<SyncBadge pending={5} stuck={3} lastError="answers -> 500 boom" onRetry={onRetry} />);
-    const badge = screen.getByRole('button', { name: /3 not syncing/i });
-    expect(badge).toHaveAttribute('title', expect.stringContaining('boom'));
-    fireEvent.click(badge);
+    // Error text is hidden until the badge is tapped (no useless hover tooltip).
+    expect(screen.queryByText(/boom/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /3 changes not syncing/i }));
+    expect(screen.getByText(/answers -> 500 boom/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^retry$/i }));
     expect(onRetry).toHaveBeenCalledOnce();
-  });
-
-  it('healthy pending work while online still renders nothing', () => {
-    const { container } = render(<SyncBadge pending={5} stuck={0} />);
-    expect(container).toBeEmptyDOMElement();
   });
 
   it('offline takes precedence over stuck (retries are pointless offline)', () => {
     ONLINE = false;
     render(<SyncBadge pending={3} stuck={2} lastError="boom" />);
-    expect(screen.getByText(/Offline — changes saved/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/offline — changes saved/i)).toBeInTheDocument();
     expect(screen.queryByText(/not syncing/i)).toBeNull();
   });
 });
