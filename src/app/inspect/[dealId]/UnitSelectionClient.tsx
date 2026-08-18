@@ -7,8 +7,11 @@ import type { DealWithApartments } from "@/lib/types";
 
 export default function UnitSelectionClient({
   deal,
+  resumable,
 }: {
   deal: DealWithApartments | null;
+  /** An unfinished inspection for this deal, offered for resuming. */
+  resumable?: { id: string; startedAt: string; savedAreas: number } | null;
 }) {
   const router = useRouter();
   const [includeSharedAreas, setIncludeSharedAreas] = useState(true);
@@ -77,6 +80,33 @@ export default function UnitSelectionClient({
       </header>
 
       <main className="flex-1 px-6 py-6 pb-32">
+        {/* An interrupted visit is resumable, and the inspector needs a way back to
+            it: starting a new inspection here would leave the saved areas
+            stranded under an inspection nobody opens again. */}
+        {resumable && resumable.savedAreas > 0 && (
+          <div className="mb-6 rounded-2xl border border-[#bbf7d0] bg-[#f0fdf4] p-5">
+            <h3 className="text-[17px] font-semibold text-[var(--color-primary)]">
+              Unfinished inspection
+            </h3>
+            <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+              {resumable.savedAreas} area{resumable.savedAreas === 1 ? "" : "s"} already saved
+              {resumable.startedAt
+                ? `, started ${new Date(resumable.startedAt).toLocaleDateString()}`
+                : ""}
+              . Continue and it picks up at the first area you have not done.
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push(`/inspect/${deal.id}/${resumable.id}`)}
+              className="mt-4 w-full rounded-xl bg-[var(--color-accent)] py-3.5 text-[15px] font-semibold text-[var(--color-primary)]"
+            >
+              Continue inspection
+            </button>
+            <p className="mt-3 text-xs text-[var(--color-text-muted)]">
+              Or select units below to start a separate new inspection.
+            </p>
+          </div>
+        )}
         <div
           className={`mb-6 rounded-2xl border p-5 transition-all cursor-pointer ${
             includeSharedAreas

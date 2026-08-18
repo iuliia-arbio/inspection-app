@@ -4,9 +4,14 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { STORAGE_BUCKETS } from "@/lib/constants";
+import { STORAGE_BUCKETS, areaAudioPath, areaPhotoPath } from "@/lib/constants";
 import { BASE_QUESTIONS, hasIssuesForArea, hasIssuesForAreaFromFocusAreas } from "@/lib/questions";
-import { buildBlocks, getBaseAreaId } from "@/lib/inspection";
+import {
+  buildBlocks,
+  getBaseAreaId,
+  areaKey,
+  resolveResumePosition,
+} from "@/lib/inspection";
 import { useVoiceRecorder, formatDuration } from "@/lib/useVoiceRecorder";
 import type { DealWithApartments } from "@/lib/types";
 
@@ -45,6 +50,17 @@ export default function InspectionFlowClient({
       followUps: { question_id: string; question: string; reason: string }[];
     }>;
   } | null>(null);
+  // Areas the server already holds for this inspection, fetched once on open.
+  // null = not looked up yet (the flow waits for it before choosing a position,
+  // so a resumed visit never flashes area 1 before jumping).
+  const [savedAreas, setSavedAreas] = useState<
+    { area_id: string; apartment_id: string | null; scope: string }[] | null
+  >(null);
+  const [resumedFrom, setResumedFrom] = useState<{ saved: number; label: string } | null>(null);
+  // Which areas the server holds, as `${apartmentId ?? "shared"}::${areaId}`.
+  // Drives the per-screen "Saved" cue and the resume jump.
+  const [savedAreaKeys, setSavedAreaKeys] = useState<Set<string>>(new Set());
+  const resumeAppliedRef = useRef(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
@@ -56,6 +72,30 @@ export default function InspectionFlowClient({
     setDeepDiveCache({});
     deepDiveFetchedRef.current = null;
     firstUnitConfigShownRef.current = false;
+    resumeAppliedRef.current = false;
+    setSavedAreas(null);
+    setResumedFrom(null);
+  }, [inspectionId]);
+
+  // What has already reached the server. Failing open with [] is deliberate: a
+  // flaky lookup should start the visit, not block it.
+  useEffect(() => {
+    if (inspectionId.startsWith("demo-")) {
+      setSavedAreas([]);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/inspections/${inspectionId}/recordings`)
+      .then((r) => (r.ok ? r.json() : { recordings: [] }))
+      .then((data) => {
+        if (!cancelled) setSavedAreas(data.recordings ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setSavedAreas([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [inspectionId]);
 
   const [followUpAudio, setFollowUpAudio] = useState<Record<string, { blob: Blob; durationSeconds: number }>>({});
@@ -66,8 +106,12 @@ export default function InspectionFlowClient({
   const followupRecorder = useVoiceRecorder();
 
   const recorder = useVoiceRecorder();
-  const recordingsRef = useRef<Map<string, { blob: Blob; durationSeconds: number }>>(new Map());
-  const [photosByQuestion, setPhotosByQuestion] = useState<Record<string, { blob: Blob; url: string }[]>>({});
+  // Each captured photo carries a stable id: it names the object in storage and
+  // lets a repeat save recognise images it has already uploaded instead of
+  // uploading them again under a fresh name.
+  const [photosByQuestion, setPhotosByQuestion] = useState<
+    Record<string, { id: string; blob: Blob; url: string }[]>
+  >({});
   const [isSubmittingArea, setIsSubmittingArea] = useState(false);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const activeQuestionRef = useRef<string | null>(null);
@@ -170,9 +214,64 @@ export default function InspectionFlowClient({
   const includeSharedAreas = inspectionData?.includeSharedAreas !== false;
   const blocks = deal ? buildBlocks(deal, selectedUnitIds, mergedUnitConfigs, includeSharedAreas) : [];
 
+  // Resume where the visit stopped. The position is DERIVED from the areas the
+  // server holds, not from a stored cursor, so "where you are" can never
+  // disagree with "what is saved" — and a device that lost its session state
+  // (webview closed, link reopened, different phone) picks up in the right place
+  // instead of restarting at area 1.
+  //
+  // Declared before the unit-config effect on purpose: both can fire in the same
+  // commit, and a resume marks firstUnitConfigShownRef so the room-count screen
+  // does not re-open in the middle of a visit.
+  useEffect(() => {
+    if (resumeAppliedRef.current) return;
+    if (!savedAreas || blocks.length === 0) return;
+    resumeAppliedRef.current = true;
+
+    const position = resolveResumePosition(blocks, savedAreas);
+    if (position.kind === "fresh") return; // nothing stored — start at the top
+
+    const savedKeys = new Set(
+      savedAreas
+        .filter((r) => r.scope !== "freestyle")
+        .map((r) => areaKey(r.apartment_id, r.area_id))
+    );
+    setSavedAreaKeys(savedKeys);
+    firstUnitConfigShownRef.current = true; // don't re-ask room counts mid-visit
+    setBlockIndex(position.blockIndex);
+    setAreaIndex(position.areaIndex);
+
+    const block = blocks[position.blockIndex];
+    if (position.kind === "area") {
+      setScreen("inspection");
+      setResumedFrom({
+        saved: savedKeys.size,
+        label: `${block.unitName} · ${block.areas[position.areaIndex].name}`,
+      });
+      return;
+    }
+
+    setFollowUpBlockContext({
+      scope: block.type === "shared" ? "shared" : "unit",
+      apartmentId: block.type === "unit" ? (block.unitId ?? null) : null,
+    });
+    setScreen("followup");
+    setResumedFrom({ saved: savedKeys.size, label: "follow-up questions" });
+  }, [savedAreas, blocks]);
+
+  // Jump back to the first area, for when the resume landed somewhere the
+  // inspector did not expect.
+  const restartFromFirstArea = () => {
+    setResumedFrom(null);
+    setBlockIndex(0);
+    setAreaIndex(0);
+    setScreen("inspection");
+  };
+
   useEffect(() => {
     if (
       screen === "inspection" &&
+      savedAreas !== null &&
       blockIndex === 0 &&
       areaIndex === 0 &&
       blocks.length > 0 &&
@@ -183,7 +282,7 @@ export default function InspectionFlowClient({
       setConfigTargetBlockIndex(0);
       setScreen("unit_config");
     }
-  }, [screen, blockIndex, areaIndex, blocks.length, blocks]);
+  }, [screen, savedAreas, blockIndex, areaIndex, blocks.length, blocks]);
 
   const currentBlock = blocks[blockIndex];
   const currentAreas = currentBlock?.areas ?? [];
@@ -247,17 +346,189 @@ export default function InspectionFlowClient({
 
   const canGoBack = areaIndex > 0 || blockIndex > 0;
 
-  const handleNext = async () => {
-    if (recorder.blob) {
-      const key = `${currentBlock?.unitId ?? "shared"}-${currentArea?.id}`;
-      recordingsRef.current.set(key, {
-        blob: recorder.blob,
-        durationSeconds: recorder.durationSeconds,
-      });
+  // --- Per-screen saving ----------------------------------------------------
+  //
+  // Captured work used to reach the server only when the inspector tapped Next,
+  // so a webview that closed mid-visit lost everything recorded since the last
+  // tap — and on the final area it lost that area entirely. Every screen now
+  // saves itself as soon as there is something to save: when a recording stops,
+  // when a photo is added or removed, when the app is backgrounded, and still on
+  // Next/Back.
+  //
+  // Repeat saves are cheap and idempotent. Each area remembers the signature of
+  // what it last stored (so an unchanged screen is a no-op, not another upload
+  // and another Whisper run) and each photo remembers its storage path (so a
+  // second save re-sends the path instead of uploading the image again).
+  const currentAreaKey = areaKey(currentBlock?.unitId, currentArea?.id ?? "");
+
+  // Signature of what each area last stored successfully. State, not just a ref,
+  // because the "Saved" cue on screen reads it — the ref mirror exists so the
+  // save path can check it synchronously without racing a re-render.
+  const [savedSigs, setSavedSigs] = useState<Record<string, string>>({});
+  const savedSigsRef = useRef(savedSigs);
+  savedSigsRef.current = savedSigs;
+  const areaRecordingIdRef = useRef<Map<string, string>>(new Map());
+  // photo id -> storage path, per area, for photos already in the bucket.
+  const uploadedPhotosRef = useRef<Map<string, Map<string, string>>>(new Map());
+  const saveInFlightRef = useRef<Map<string, Promise<{ areaRecordingId?: string }>>>(
+    new Map()
+  );
+  const [saveFailed, setSaveFailed] = useState(false);
+
+  const flatPhotos = Object.entries(photosByQuestion).flatMap(([questionId, photos]) =>
+    photos.map((photo) => ({ id: photo.id, blob: photo.blob, questionId }))
+  );
+
+  // Identifies what is on screen right now. Blob size plus duration distinguishes
+  // a re-record from the same recording; the photo ids catch an added or removed
+  // photo.
+  const currentSignature = [
+    recorder.blob ? `a:${recorder.blob.size}:${recorder.durationSeconds}` : "a:none",
+    `p:${flatPhotos.map((p) => p.id).join(",")}`,
+  ].join("|");
+
+  const hasCapture = !!recorder.blob || flatPhotos.length > 0;
+  const hasUnsavedCapture = hasCapture && savedSigs[currentAreaKey] !== currentSignature;
+
+  /**
+   * Persist the area on screen. Safe to call as often as you like: it returns
+   * early when this exact content is already stored, and concurrent callers
+   * (an auto-save racing a Next tap) share one in-flight request.
+   */
+  const saveCurrentArea = async (
+    { allowEmpty = false }: { allowEmpty?: boolean } = {}
+  ): Promise<{ areaRecordingId?: string }> => {
+    if (inspectionId.startsWith("demo-")) return {};
+    const key = currentAreaKey;
+    const areaId = currentArea?.id ?? "";
+    if (!areaId) return {};
+
+    const cachedId = areaRecordingIdRef.current.get(key);
+    // A save is already going out for this area. Wait for it, then reconsider with
+    // the latest closure: a photo taken while the previous save was in flight
+    // would otherwise ride along on a promise that predates it and never be
+    // stored. The signature check below ends the chain once nothing is left over.
+    const inFlight = saveInFlightRef.current.get(key);
+    if (inFlight) {
+      return inFlight.then(() => saveCurrentAreaRef.current({ allowEmpty }));
     }
+
+    // An empty screen never overwrites a saved one: leaving an area blank, or
+    // tapping Re-record and walking away, must not blank out audio the server
+    // already holds. `allowEmpty` is for a deliberate Skip/Next — that records an
+    // empty area so resume knows the screen was visited on purpose and does not
+    // send the inspector back to it every time the visit reopens.
+    if (!hasCapture && (!allowEmpty || savedAreaKeys.has(key))) {
+      return { areaRecordingId: cachedId };
+    }
+
+    const signature = currentSignature;
+    if (savedSigsRef.current[key] === signature) return { areaRecordingId: cachedId };
+
+    const apartmentId = currentBlock?.type === "unit" ? (currentBlock.unitId ?? null) : null;
+    // Only re-transcribe when the audio itself is new: the API keeps the stored
+    // transcript when this flag is false.
+    const previousAudio = (savedSigsRef.current[key] ?? "").split("|")[0];
+    const audioChanged = !!recorder.blob && previousAudio !== signature.split("|")[0];
+
+    const request = (async (): Promise<{ areaRecordingId?: string }> => {
+      const result = await uploadAreaData({
+        areaId,
+        areaName: currentArea?.name ?? "",
+        scope: currentBlock?.type === "shared" ? "shared" : "unit",
+        apartmentId,
+        audio: recorder.blob
+          ? { blob: recorder.blob, durationSeconds: recorder.durationSeconds }
+          : null,
+        audioChanged,
+        photos: flatPhotos,
+        areaKeyForPhotos: key,
+      });
+      if (result.ok) {
+        setSavedSigs((prev) => ({ ...prev, [key]: signature }));
+        savedSigsRef.current = { ...savedSigsRef.current, [key]: signature };
+        if (result.areaRecordingId) {
+          areaRecordingIdRef.current.set(key, result.areaRecordingId);
+        }
+        setSavedAreaKeys((prev) => (prev.has(key) ? prev : new Set(prev).add(key)));
+        setSaveFailed(false);
+      } else {
+        setSaveFailed(true);
+      }
+      return { areaRecordingId: result.areaRecordingId ?? cachedId };
+    })();
+
+    saveInFlightRef.current.set(key, request);
+    try {
+      return await request;
+    } finally {
+      saveInFlightRef.current.delete(key);
+    }
+  };
+
+  // Keep the newest closure reachable from effects without making them re-run on
+  // every state change — an effect that fires on `recorder.status` must save what
+  // is on screen NOW, not what was there when it mounted.
+  const saveCurrentAreaRef = useRef(saveCurrentArea);
+  saveCurrentAreaRef.current = saveCurrentArea;
+  const hasUnsavedCaptureRef = useRef(hasUnsavedCapture);
+  hasUnsavedCaptureRef.current = hasUnsavedCapture;
+
+  const autoSave = (context: string) => {
+    void saveCurrentAreaRef
+      .current()
+      .catch((e) => console.error(`Auto-save (${context}) failed:`, e));
+  };
+
+  // Save the moment a recording stops, before the inspector taps anything.
+  useEffect(() => {
+    if (screen !== "inspection" || recorder.status !== "recorded" || !recorder.blob) return;
+    autoSave("recording stopped");
+  }, [screen, recorder.status, recorder.blob]);
+
+  // Save as photos are added or removed. The photo id list is the trigger, and
+  // the save itself no-ops when nothing actually changed.
+  const photoIdList = flatPhotos.map((p) => p.id).join(",");
+  useEffect(() => {
+    if (screen !== "inspection" || !photoIdList) return;
+    autoSave("photo changed");
+  }, [screen, photoIdList]);
+
+  // Backgrounding is the last moment we are guaranteed to run: iOS reclaims
+  // hidden webviews without warning, which is what "the link closed itself"
+  // looks like from the inside. Flush whatever is on screen.
+  useEffect(() => {
+    const flush = () => {
+      if (!hasUnsavedCaptureRef.current) return;
+      void saveCurrentAreaRef.current().catch(() => {});
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", flush);
+    };
+  }, []);
+
+  // Belt and braces for a deliberate close or reload with capture still on
+  // screen. Ignored by some mobile browsers, but free where it works.
+  useEffect(() => {
+    if (!hasUnsavedCapture) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [hasUnsavedCapture]);
+
+  const handleNext = async () => {
     setIsSubmittingArea(true);
     try {
-      const { areaRecordingId } = await uploadAreaData();
+      await saveCurrentArea({ allowEmpty: true });
       recorder.reset();
       Object.values(photosByQuestion).flat().forEach((p) => URL.revokeObjectURL(p.url));
       setPhotosByQuestion({});
@@ -280,58 +551,85 @@ export default function InspectionFlowClient({
     }
   };
 
-  const uploadAreaData = async (): Promise<{ areaRecordingId?: string }> => {
-    if (inspectionId.startsWith("demo-")) return {};
-    const hasAudio = !!recorder.blob;
-    const flatPhotos = Object.entries(photosByQuestion).flatMap(([questionId, photos]) =>
-      photos.map((photo) => ({ blob: photo.blob, questionId }))
-    );
-    const areaId = currentArea?.id ?? "";
+  /**
+   * Push one area to the server. Audio and photos go straight to Supabase
+   * Storage (Vercel caps request bodies at 4.5MB) and the row is written through
+   * the API. `photo_entries` is the COMPLETE set for the area, so the API can
+   * converge on exactly what is on screen — that is what keeps repeat saves from
+   * stacking duplicate photos and what makes a removed photo actually go away.
+   * `ok` tells the caller whether the area is genuinely stored, so a failed save
+   * is retried on the next trigger instead of being marked done.
+   */
+  const uploadAreaData = async (input: {
+    areaId: string;
+    areaName: string;
+    scope: "shared" | "unit";
+    apartmentId: string | null;
+    audio: { blob: Blob; durationSeconds: number } | null;
+    audioChanged: boolean;
+    photos: { id: string; blob: Blob; questionId: string }[];
+    areaKeyForPhotos: string;
+  }): Promise<{ ok: boolean; areaRecordingId?: string }> => {
+    if (inspectionId.startsWith("demo-")) return { ok: true };
+    const { areaId, areaName, scope, apartmentId, audio, audioChanged, photos } = input;
 
-    // Upload directly to Supabase Storage to avoid Vercel's 4.5MB request limit
     let audioStoragePath: string | null = null;
     const photoEntries: { storagePath: string; questionId: string | null }[] = [];
 
     if (supabase) {
-      if (hasAudio && recorder.blob) {
-        const audioPath = `${inspectionId}/${areaId}.webm`;
-        const { error: audioErr } = await supabase.storage
-          .from(STORAGE_BUCKETS.AUDIO)
-          .upload(audioPath, recorder.blob, { contentType: "audio/webm", upsert: true });
-        if (audioErr) {
-          console.error("Direct audio upload failed:", audioErr);
-        } else {
-          audioStoragePath = audioPath;
+      if (audio) {
+        const audioPath = areaAudioPath(inspectionId, areaId, apartmentId);
+        if (audioChanged) {
+          const { error: audioErr } = await supabase.storage
+            .from(STORAGE_BUCKETS.AUDIO)
+            .upload(audioPath, audio.blob, { contentType: "audio/webm", upsert: true });
+          if (audioErr) {
+            console.error("Direct audio upload failed:", audioErr);
+            return { ok: false };
+          }
         }
+        audioStoragePath = audioPath;
       }
-      for (const { blob, questionId } of flatPhotos) {
-        const photoId = crypto.randomUUID();
-        const storagePath = `${inspectionId}/${areaId}/${photoId}.jpg`;
-        const { error: photoErr } = await supabase.storage
-          .from(STORAGE_BUCKETS.PHOTOS)
-          .upload(storagePath, blob, { contentType: blob.type || "image/jpeg", upsert: false });
-        if (photoErr) {
-          console.error("Direct photo upload failed:", photoErr);
-        } else {
-          photoEntries.push({ storagePath, questionId });
+
+      let uploaded = uploadedPhotosRef.current.get(input.areaKeyForPhotos);
+      if (!uploaded) {
+        uploaded = new Map();
+        uploadedPhotosRef.current.set(input.areaKeyForPhotos, uploaded);
+      }
+      for (const { id, blob, questionId } of photos) {
+        let storagePath = uploaded.get(id);
+        if (!storagePath) {
+          storagePath = areaPhotoPath(inspectionId, areaId, apartmentId, id);
+          const { error: photoErr } = await supabase.storage
+            .from(STORAGE_BUCKETS.PHOTOS)
+            .upload(storagePath, blob, {
+              contentType: blob.type || "image/jpeg",
+              upsert: true,
+            });
+          if (photoErr) {
+            console.error("Direct photo upload failed:", photoErr);
+            return { ok: false };
+          }
+          uploaded.set(id, storagePath);
         }
+        photoEntries.push({ storagePath, questionId });
       }
     }
 
     // When supabase unavailable, fall back to FormData (may fail if payload > 4.5MB)
-    if (!supabase && (hasAudio || flatPhotos.length > 0)) {
+    if (!supabase && (audio || photos.length > 0)) {
       const formData = new FormData();
-      if (hasAudio) {
-        formData.append("audio", recorder.blob!, "recording.webm");
-        formData.append("duration_seconds", String(recorder.durationSeconds));
+      if (audio) {
+        formData.append("audio", audio.blob, "recording.webm");
+        formData.append("duration_seconds", String(audio.durationSeconds));
       }
       formData.append("area_id", areaId);
-      formData.append("area_name", currentArea?.name ?? "");
-      formData.append("scope", currentBlock?.type === "shared" ? "shared" : "unit");
-      if (currentBlock?.type === "unit" && currentBlock.unitId) {
-        formData.append("apartment_id", currentBlock.unitId);
+      formData.append("area_name", areaName);
+      formData.append("scope", scope);
+      if (apartmentId) {
+        formData.append("apartment_id", apartmentId);
       }
-      flatPhotos.forEach(({ blob, questionId }) => {
+      photos.forEach(({ blob, questionId }) => {
         formData.append("photos", blob, "photo.jpg");
         formData.append("photo_question_ids", questionId);
       });
@@ -340,11 +638,11 @@ export default function InspectionFlowClient({
           method: "POST",
           body: formData,
         });
-        const data = await res.json();
-        return { areaRecordingId: data?.areaRecordingId };
+        const data = await res.json().catch(() => ({}));
+        return { ok: res.ok, areaRecordingId: data?.areaRecordingId };
       } catch (e) {
         console.error("Failed to upload area data (FormData fallback):", e);
-        return {};
+        return { ok: false };
       }
     }
 
@@ -354,33 +652,27 @@ export default function InspectionFlowClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           area_id: areaId,
-          area_name: currentArea?.name ?? "",
-          scope: currentBlock?.type === "shared" ? "shared" : "unit",
-          apartment_id: currentBlock?.type === "unit" ? currentBlock.unitId : null,
-          duration_seconds: recorder.durationSeconds,
+          area_name: areaName,
+          scope,
+          apartment_id: apartmentId,
+          duration_seconds: audio?.durationSeconds ?? 0,
           audio_storage_path: audioStoragePath,
+          audio_changed: audioChanged,
           photo_entries: photoEntries,
         }),
       });
-      const data = await res.json();
-      return { areaRecordingId: data?.areaRecordingId };
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, areaRecordingId: data?.areaRecordingId };
     } catch (e) {
       console.error("Failed to upload area data:", e);
-      return {};
+      return { ok: false };
     }
   };
 
   const handleBack = async () => {
-    if (recorder.blob) {
-      const key = `${currentBlock?.unitId ?? "shared"}-${currentArea?.id}`;
-      recordingsRef.current.set(key, {
-        blob: recorder.blob,
-        durationSeconds: recorder.durationSeconds,
-      });
-    }
     setIsSubmittingArea(true);
     try {
-      await uploadAreaData();
+      await saveCurrentArea({ allowEmpty: true });
       recorder.reset();
       Object.values(photosByQuestion).flat().forEach((p) => URL.revokeObjectURL(p.url));
       setPhotosByQuestion({});
@@ -528,7 +820,7 @@ export default function InspectionFlowClient({
 
     if (supabase) {
       if (audio) {
-        const audioPath = `${inspectionId}/${areaId}.webm`;
+        const audioPath = areaAudioPath(inspectionId, areaId, apartmentId);
         const { error: audioErr } = await supabase.storage
           .from(STORAGE_BUCKETS.AUDIO)
           .upload(audioPath, audio.blob, { contentType: "audio/webm", upsert: true });
@@ -536,7 +828,7 @@ export default function InspectionFlowClient({
       }
       for (const p of photos) {
         const photoId = crypto.randomUUID();
-        const storagePath = `${inspectionId}/${areaId}/${photoId}.jpg`;
+        const storagePath = areaPhotoPath(inspectionId, areaId, apartmentId, photoId);
         const { error: photoErr } = await supabase.storage
           .from(STORAGE_BUCKETS.PHOTOS)
           .upload(storagePath, p.blob, { contentType: p.blob.type || "image/jpeg", upsert: false });
@@ -697,7 +989,7 @@ export default function InspectionFlowClient({
     router.push("/");
   };
 
-  if (initialState === "loading") {
+  if (initialState === "loading" || savedAreas === null) {
     return (
       <div className="mx-auto flex min-h-screen max-w-[430px] items-center justify-center">
         <p className="text-[var(--color-text-muted)]">Loading inspection…</p>
@@ -1453,10 +1745,41 @@ export default function InspectionFlowClient({
           ))}
         </div>
 
+        {resumedFrom && (
+          <div className="mb-4 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-4 py-3">
+            <p className="text-[13px] font-semibold text-[var(--color-primary)]">
+              Picked up where you left off
+            </p>
+            <p className="mt-0.5 text-[13px] text-[var(--color-text-muted)]">
+              {resumedFrom.saved} area{resumedFrom.saved === 1 ? "" : "s"} already saved. Nothing
+              you submitted earlier was lost.
+            </p>
+            <button
+              type="button"
+              onClick={restartFromFirstArea}
+              className="mt-2 text-[13px] font-medium text-[var(--color-primary)] underline"
+            >
+              Go to the first area instead
+            </button>
+          </div>
+        )}
+        {saveFailed && (
+          <div role="alert" className="mb-4 rounded-xl border border-[var(--color-error)] bg-[#fef2f2] px-4 py-3">
+            <p className="text-[13px] font-medium text-[var(--color-error)]">
+              This area could not be saved. Stay on this screen and check your connection — it
+              retries when you add a photo or tap Next.
+            </p>
+          </div>
+        )}
         <div className="mb-4 flex flex-wrap items-center justify-start gap-2">
           <span className="inline-flex max-w-full min-w-0 break-all rounded-lg bg-[var(--color-bg-light)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-primary)]">
             {currentBlock?.unitName}
           </span>
+          {savedAreaKeys.has(currentAreaKey) && !hasUnsavedCapture && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-[#f0fdf4] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-success)]">
+              ✓ Saved
+            </span>
+          )}
           {currentBlock?.type === "unit" &&
             currentApt?.issues &&
             currentApt.issues.length > 0 && (
@@ -1513,7 +1836,10 @@ export default function InspectionFlowClient({
             if (file && qId) {
               setPhotosByQuestion((prev) => ({
                 ...prev,
-                [qId]: [...(prev[qId] ?? []), { blob: file, url: URL.createObjectURL(file) }],
+                [qId]: [
+                  ...(prev[qId] ?? []),
+                  { id: crypto.randomUUID(), blob: file, url: URL.createObjectURL(file) },
+                ],
               }));
               activeQuestionRef.current = null;
             }

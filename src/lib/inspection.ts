@@ -81,3 +81,65 @@ export function getBaseAreaId(areaId: string): string {
   return areaId.replace(/_\d+$/, "");
 }
 
+
+/**
+ * Key identifying one inspected area within an inspection.
+ *
+ * Unit-qualified on purpose: area ids repeat across units (every unit has a
+ * `bathroom_1`), so keying on the area id alone conflated different units'
+ * screens — which is also how one unit's audio file came to overwrite another's
+ * in storage.
+ */
+export function areaKey(apartmentId: string | null | undefined, areaId: string): string {
+  return `${apartmentId ?? "shared"}::${areaId}`;
+}
+
+export type SavedAreaRow = {
+  area_id: string;
+  apartment_id: string | null;
+  scope: string;
+};
+
+export type ResumePosition =
+  /** Nothing saved yet — start at the top. */
+  | { kind: "fresh" }
+  /** First area with nothing stored for it. */
+  | { kind: "area"; blockIndex: number; areaIndex: number }
+  /** Every area is stored; pick up on the last block's follow-up screen. */
+  | { kind: "followup"; blockIndex: number; areaIndex: number };
+
+/**
+ * Where an interrupted inspection should pick up, derived from the areas the
+ * server already holds.
+ *
+ * Deriving the position from stored data rather than from a saved cursor is the
+ * point: a cursor can outlive the upload it refers to (or die with the tab),
+ * while these rows ARE the saved work, so "where you are" and "what is saved"
+ * cannot drift apart. Freestyle notes are ignored — they belong to no area.
+ */
+export function resolveResumePosition(
+  blocks: InspectionBlock[],
+  savedAreas: SavedAreaRow[]
+): ResumePosition {
+  const saved = new Set(
+    savedAreas
+      .filter((r) => r.scope !== "freestyle")
+      .map((r) => areaKey(r.apartment_id, r.area_id))
+  );
+  if (saved.size === 0 || blocks.length === 0) return { kind: "fresh" };
+
+  for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
+    const block = blocks[blockIndex];
+    for (let areaIndex = 0; areaIndex < block.areas.length; areaIndex++) {
+      if (saved.has(areaKey(block.unitId, block.areas[areaIndex].id))) continue;
+      return { kind: "area", blockIndex, areaIndex };
+    }
+  }
+
+  const blockIndex = blocks.length - 1;
+  return {
+    kind: "followup",
+    blockIndex,
+    areaIndex: Math.max(0, blocks[blockIndex].areas.length - 1),
+  };
+}
