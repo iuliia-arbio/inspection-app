@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { randomUUID } from "crypto";
 import OpenAI, { toFile } from "openai";
-import { getAreaRecordingsForBlock } from "@/lib/data";
+import {
+  getAreaRecordingsForBlock,
+  getSavedAreasForInspection,
+} from "@/lib/data";
 import { loadOpenAIKey } from "@/lib/openaiKey";
+import { areaAudioPath, areaPhotoPath, areaPhotoFolder } from "@/lib/constants";
 
 export async function GET(
   request: Request,
@@ -14,11 +18,8 @@ export async function GET(
   const scope = searchParams.get("scope") as "shared" | "unit" | null;
   const apartmentId = searchParams.get("apartment_id");
 
-  if (!inspectionId || inspectionId.startsWith("demo-") || !scope) {
-    return NextResponse.json(
-      { error: "Missing inspection id or scope" },
-      { status: 400 }
-    );
+  if (!inspectionId || inspectionId.startsWith("demo-")) {
+    return NextResponse.json({ error: "Missing inspection id" }, { status: 400 });
   }
 
   if (!supabase) {
@@ -26,6 +27,13 @@ export async function GET(
       { error: "Supabase not configured" },
       { status: 503 }
     );
+  }
+
+  // No scope → every area saved so far, for the flow's resume lookup. With a
+  // scope it stays the per-block fetch the follow-up screen does.
+  if (!scope) {
+    const recordings = await getSavedAreasForInspection(inspectionId);
+    return NextResponse.json({ recordings });
   }
 
   const recordings = await getAreaRecordingsForBlock(
@@ -66,6 +74,11 @@ export async function POST(
   let durationSeconds: number;
   let audioPath: string | null;
   let photoEntries: { storagePath: string; questionId: string | null }[];
+  // Whether THIS request carries newly captured audio. The flow saves a screen
+  // several times (on stop, on each photo, on Next) and re-sends the same
+  // storage path each time; without this every save would null the transcript
+  // and pay for another Whisper run on identical audio.
+  let audioChanged: boolean;
 
   if (isJson) {
     const body = await request.json();
@@ -76,6 +89,7 @@ export async function POST(
     durationSeconds = parseInt(String(body.duration_seconds ?? 0), 10);
     audioPath = body.audio_storage_path ?? null;
     photoEntries = Array.isArray(body.photo_entries) ? body.photo_entries : [];
+    audioChanged = body.audio_changed !== false;
   } else {
     const formData = await request.formData();
     const audio = formData.get("audio") as Blob | null;
@@ -91,7 +105,7 @@ export async function POST(
     const photoQuestionIds = formData.getAll("photo_question_ids") as string[];
 
     if (audio && audio.size > 0) {
-      const storagePath = `${inspectionId}/${areaId}.webm`;
+      const storagePath = areaAudioPath(inspectionId, areaId, apartmentId);
       const { error: uploadError } = await supabase.storage
         .from(AUDIO_BUCKET)
         .upload(storagePath, audio, {
@@ -109,12 +123,13 @@ export async function POST(
     } else {
       audioPath = null;
     }
+    audioChanged = !!audioPath;
     photoEntries = [];
     for (let i = 0; i < photos.length; i++) {
       const photo = photos[i];
       if (!(photo instanceof Blob) || photo.size === 0) continue;
       const photoId = randomUUID();
-      const storagePath = `${inspectionId}/${areaId}/${photoId}.jpg`;
+      const storagePath = areaPhotoPath(inspectionId, areaId, apartmentId, photoId);
       const { error: photoUploadError } = await supabase.storage
         .from(PHOTOS_BUCKET)
         .upload(storagePath, photo, {
@@ -139,13 +154,26 @@ export async function POST(
     );
   }
 
-  const { data: existing } = await supabase
+  // Find the row this screen already has, so re-saving the same area updates it
+  // instead of stacking duplicates — the flow now saves each screen more than
+  // once (on stop, on each photo, on Next). PostgREST `is` only accepts
+  // null/true/false, so passing a unit's UUID through it errored out, every
+  // unit save missed its own row and inserted another one.
+  let existingQuery = supabase
     .from("ins_area_recordings")
-    .select("id")
+    .select("id, audio_path, transcript, transcript_status")
     .eq("inspection_id", inspectionId)
-    .eq("area_id", areaId)
-    .is("apartment_id", apartmentId || null)
-    .maybeSingle();
+    .eq("area_id", areaId);
+  existingQuery = apartmentId
+    ? existingQuery.eq("apartment_id", apartmentId)
+    : existingQuery.is("apartment_id", null);
+  const { data: existing } = await existingQuery.maybeSingle();
+
+  // A re-save of unchanged audio must not throw away the transcript we already
+  // paid for: keep the row's own status so the follow-up screen and the report
+  // still see it.
+  const keepTranscript =
+    !!existing?.id && !audioChanged && existing.transcript_status === "completed";
 
   let areaRecordingId: string | undefined;
   const recordingPayload = {
@@ -155,12 +183,12 @@ export async function POST(
     scope,
     audio_path: audioPath,
     audio_duration_seconds: durationSeconds || null,
-    transcript_status: "pending",
+    transcript_status: keepTranscript ? "completed" : "pending",
   };
 
   if (existing?.id) {
     const updatePayload: Record<string, unknown> = { ...recordingPayload };
-    if (audioPath) {
+    if (audioPath && audioChanged) {
       updatePayload.transcript = null;
     }
     const { data: updated, error: updateError } = await supabase
@@ -198,8 +226,34 @@ export async function POST(
     areaRecordingId = inserted?.id;
   }
 
-  if (areaRecordingId && photoEntries.length > 0) {
+  // photo_entries is the COMPLETE set of photos for this area, not an addition to
+  // it. The flow saves a screen repeatedly now, so appending blindly would stack
+  // the same image again on every save and a photo the inspector deleted would
+  // still reach the report. Converge instead: insert what is new, drop rows that
+  // are no longer on screen.
+  if (areaRecordingId) {
+    const { data: storedPhotos } = await supabase
+      .from("ins_inspection_photos")
+      .select("id, storage_path")
+      .eq("area_recording_id", areaRecordingId);
+
+    // Scope the convergence to THIS area's own photo folder. Rows outside it are
+    // not ours to remove: follow-up answers attach photos to the same recording
+    // under `followup_<id>/`, and inspections that started before area photos
+    // were namespaced by unit still hold photos under the older prefix.
+    const ownedPrefix = areaPhotoFolder(inspectionId, areaId, apartmentId);
+    const stored = new Map(
+      (storedPhotos ?? [])
+        .filter((r) => (r.storage_path as string).startsWith(ownedPrefix))
+        .map((r) => [r.storage_path as string, r.id as string])
+    );
+    const wanted = new Set(photoEntries.map((e) => e.storagePath));
+
+    const existingPaths = new Set(
+      (storedPhotos ?? []).map((r) => r.storage_path as string)
+    );
     for (const entry of photoEntries) {
+      if (existingPaths.has(entry.storagePath)) continue;
       const { error: photoInsertError } = await supabase
         .from("ins_inspection_photos")
         .insert({
@@ -211,13 +265,34 @@ export async function POST(
         console.error("ins_inspection_photos insert failed:", photoInsertError);
       }
     }
+
+    const removed = [...stored.entries()].filter(([path]) => !wanted.has(path));
+    if (removed.length > 0) {
+      const { error: photoDeleteError } = await supabase
+        .from("ins_inspection_photos")
+        .delete()
+        .in(
+          "id",
+          removed.map(([, id]) => id)
+        );
+      if (photoDeleteError) {
+        console.error("ins_inspection_photos delete failed:", photoDeleteError);
+      } else {
+        const { error: storageDeleteError } = await supabase.storage
+          .from(PHOTOS_BUCKET)
+          .remove(removed.map(([path]) => path));
+        if (storageDeleteError) {
+          console.error("Orphan photo cleanup failed:", storageDeleteError);
+        }
+      }
+    }
   }
 
   loadOpenAIKey();
   const hasAudio = !!audioPath;
   const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
 
-  if (hasAudio && areaRecordingId && hasOpenAIKey && audioPath) {
+  if (hasAudio && audioChanged && areaRecordingId && hasOpenAIKey && audioPath) {
     try {
       const { data: audioBlob, error: downloadError } = await supabase.storage
         .from(AUDIO_BUCKET)

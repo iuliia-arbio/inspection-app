@@ -146,7 +146,7 @@ export async function POST(
   }
 
   const scores = parsed.scores ?? [];
-  let followUps = parsed.follow_ups ?? [];
+  const followUps = parsed.follow_ups ?? [];
 
   const areaDeepDiveQuestions = deepDivesForPrompt.map((d) => d.question);
   for (const s of scores) {
@@ -173,6 +173,20 @@ export async function POST(
       : f.question;
   }
 
+  // Answers already given must survive a re-analysis. Analysis re-runs whenever
+  // the follow-up screen is opened again — including when an interrupted visit
+  // is resumed — and unconditionally writing follow_up_answer: null erased
+  // answers the inspector had already recorded.
+  const { data: answered } = await supabase
+    .from("ins_question_scores")
+    .select("question_id, follow_up_answer")
+    .eq("area_recording_id", areaRecordingId);
+  const existingAnswers = new Map(
+    (answered ?? [])
+      .filter((r) => r.follow_up_answer)
+      .map((r) => [r.question_id as string, r.follow_up_answer as string])
+  );
+
   for (const s of scores) {
     const followUpQuestion = followUpByBaseQuestion[s.question_id] ?? null;
     await supabase.from("ins_question_scores").upsert(
@@ -184,7 +198,7 @@ export async function POST(
         score: s.score,
         details: s.details ?? null,
         follow_up_question: followUpQuestion,
-        follow_up_answer: null,
+        follow_up_answer: existingAnswers.get(s.question_id) ?? null,
         updated_at: new Date().toISOString(),
       },
       {

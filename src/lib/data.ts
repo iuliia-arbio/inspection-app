@@ -84,6 +84,45 @@ export async function getInspection(
   };
 }
 
+/**
+ * The unfinished inspection for a deal, if there is one, with how much of it is
+ * already stored.
+ *
+ * Starting an inspection always minted a new one, so an inspector whose visit was
+ * interrupted had no route back to it: they came in through the deal page, got a
+ * fresh inspection, and their saved areas looked lost even though every one of
+ * them was still in the database. The deal page offers this one to resume.
+ */
+export async function getResumableInspection(
+  dealId: string
+): Promise<{ id: string; startedAt: string; savedAreas: number } | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url || !supabase) return null;
+
+  const { data } = await supabase
+    .from("ins_inspections")
+    .select("id, started_at")
+    .eq("deal_id", dealId)
+    .eq("status", "in_progress")
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data?.id) return null;
+
+  const { count } = await supabase
+    .from("ins_area_recordings")
+    .select("id", { count: "exact", head: true })
+    .eq("inspection_id", data.id)
+    .neq("scope", "freestyle");
+
+  return {
+    id: data.id as string,
+    startedAt: (data.started_at as string) ?? "",
+    savedAreas: count ?? 0,
+  };
+}
+
 /** Create inspection. Returns inspection ID or null if Supabase not configured / error. */
 export async function createInspection(
   dealId: string,
@@ -129,6 +168,26 @@ export async function getAreaRecordingsForBlock(
     query = query.eq("apartment_id", apartmentId);
   }
   const { data } = await query.order("created_at", { ascending: true });
+  return data ?? [];
+}
+
+/**
+ * Every area already saved for an inspection, across all blocks.
+ *
+ * This is the resume index: the flow keeps its position (which block, which
+ * area) in React state only, so a webview that closes mid-visit used to reopen
+ * at area 1 of block 1 with no way back to where the inspector was. Rather than
+ * persist a cursor that can drift out of sync with what actually uploaded, the
+ * client derives the position from the rows that exist here — the same rows the
+ * report is built from, so "resumed" and "saved" can never disagree.
+ */
+export async function getSavedAreasForInspection(inspectionId: string) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !supabase) return [];
+  const { data } = await supabase
+    .from("ins_area_recordings")
+    .select("id, area_id, area_name, scope, apartment_id, audio_path")
+    .eq("inspection_id", inspectionId)
+    .order("created_at", { ascending: true });
   return data ?? [];
 }
 
